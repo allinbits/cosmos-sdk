@@ -13,8 +13,8 @@ func NewHandler(keeper Keeper) sdk.Handler {
 		switch msg := msg.(type) {
 		case MsgDeposit:
 			return handleMsgDeposit(ctx, keeper, msg)
-		case MsgSubmitProposal:
-			return handleMsgSubmitProposal(ctx, keeper, msg)
+		case MsgSubmitTextProposal:
+			return handleMsgSubmitTextProposal(ctx, keeper, msg)
 		case MsgVote:
 			return handleMsgVote(ctx, keeper, msg)
 		default:
@@ -24,8 +24,40 @@ func NewHandler(keeper Keeper) sdk.Handler {
 	}
 }
 
-func handleMsgSubmitProposal(ctx sdk.Context, keeper Keeper, msg MsgSubmitProposal) sdk.Result {
-	proposal := keeper.NewTextProposal(ctx, msg.Title, msg.Description, msg.ProposalType)
+func handleMsgSubmitTextProposal(ctx sdk.Context, keeper Keeper, msg MsgSubmitTextProposal) sdk.Result {
+	proposal, err := keeper.NewTextProposal(ctx, msg.Title, msg.Description)
+	if err != nil {
+		return err.Result()
+	}
+	proposalID := proposal.GetProposalID()
+	proposalIDBytes := []byte(fmt.Sprintf("%d", proposalID))
+
+	err, votingStarted := keeper.AddDeposit(ctx, proposalID, msg.Proposer, msg.InitialDeposit)
+	if err != nil {
+		return err.Result()
+	}
+
+	resTags := sdk.NewTags(
+		tags.Action, tags.ActionProposalSubmitted,
+		tags.Proposer, []byte(msg.Proposer.String()),
+		tags.ProposalID, proposalIDBytes,
+	)
+
+	if votingStarted {
+		resTags = resTags.AppendTag(tags.VotingPeriodStart, proposalIDBytes)
+	}
+
+	return sdk.Result{
+		Data: keeper.cdc.MustMarshalBinaryLengthPrefixed(proposalID),
+		Tags: resTags,
+	}
+}
+
+func handleMsgSubmitParamChangeProposal(ctx sdk.Context, keeper Keeper, msg MsgSubmitParamChangeProposal) sdk.Result {
+	proposal, err := keeper.NewParamChangeProposal(ctx, msg.Title, msg.Description, msg.ParamSubspace, msg.ParamKey, msg.ParamValue)
+	if err != nil {
+		return err.Result()
+	}
 	proposalID := proposal.GetProposalID()
 	proposalIDBytes := []byte(fmt.Sprintf("%d", proposalID))
 

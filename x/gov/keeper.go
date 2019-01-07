@@ -1,6 +1,7 @@
 package gov
 
 import (
+	"fmt"
 	"time"
 
 	codec "github.com/cosmos/cosmos-sdk/codec"
@@ -92,17 +93,17 @@ func NewKeeper(cdc *codec.Codec, key sdk.StoreKey, paramsKeeper params.Keeper, p
 // =====================================================
 // Proposals
 
-// Creates a NewProposal
-func (keeper Keeper) NewTextProposal(ctx sdk.Context, title string, description string, proposalType ProposalKind) Proposal {
+// Creates a New TextProposal
+func (keeper Keeper) NewTextProposal(ctx sdk.Context, title string, description string) (Proposal, sdk.Error) {
 	proposalID, err := keeper.getNewProposalID(ctx)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	var proposal Proposal = &TextProposal{
 		ProposalID:   proposalID,
 		Title:        title,
 		Description:  description,
-		ProposalType: proposalType,
+		ProposalType: ProposalTypeText,
 		Status:       StatusDepositPeriod,
 		TallyResult:  EmptyTallyResult(),
 		TotalDeposit: sdk.Coins{},
@@ -114,7 +115,61 @@ func (keeper Keeper) NewTextProposal(ctx sdk.Context, title string, description 
 
 	keeper.SetProposal(ctx, proposal)
 	keeper.InsertInactiveProposalQueue(ctx, proposal.GetDepositEndTime(), proposalID)
-	return proposal
+	return proposal, nil
+}
+
+// Creates a New ParamChangeProposal
+func (keeper Keeper) NewParamChangeProposal(ctx sdk.Context, title string, description string, paramSubspace string, paramKey []byte, paramValue interface{}) (Proposal, sdk.Error) {
+	proposalID, err := keeper.getNewProposalID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	pc := ParamChange{
+		Subspace: paramSubspace,
+		Key:      paramKey,
+		Value:    paramValue,
+	}
+
+	err = keeper.CheckValidParamChange(ctx, pc)
+	if err != nil {
+		return nil, err
+	}
+
+	var proposal Proposal = &ParamChangeProposal{
+		TextProposal: TextProposal{
+			ProposalID:   proposalID,
+			Title:        title,
+			Description:  description,
+			ProposalType: ProposalTypeParameterChange,
+			Status:       StatusDepositPeriod,
+			TallyResult:  EmptyTallyResult(),
+			TotalDeposit: sdk.Coins{},
+			SubmitTime:   ctx.BlockHeader().Time,
+		},
+		ParamChange: pc,
+	}
+
+	depositPeriod := keeper.GetDepositParams(ctx).MaxDepositPeriod
+	proposal.SetDepositEndTime(proposal.GetSubmitTime().Add(depositPeriod))
+
+	keeper.SetProposal(ctx, proposal)
+	keeper.InsertInactiveProposalQueue(ctx, proposal.GetDepositEndTime(), proposalID)
+	return proposal, nil
+}
+
+func (keeper Keeper) CheckValidParamChange(ctx sdk.Context, pc ParamChange) sdk.Error {
+	subspace, found := keeper.paramsKeeper.GetSubspace(pc.Subspace)
+	if !found {
+		return ErrInvalidParamChange(keeper.codespace, fmt.Sprintf("Invalid param subspace: %s", pc.Subspace))
+	}
+	if !subspace.Has(ctx, pc.Key) {
+		return ErrInvalidParamChange(keeper.codespace, fmt.Sprintf("Could not find key %s in param subspace %s", pc.Key, pc.Subspace))
+	}
+	if !subspace.ValidSetType(ctx, pc.Key, pc.Value) {
+		return ErrInvalidParamChange(keeper.codespace, fmt.Sprintf("Param value %v is not of the right type.", pc.Value))
+	}
+	return nil
 }
 
 // Get Proposal from store by ProposalID

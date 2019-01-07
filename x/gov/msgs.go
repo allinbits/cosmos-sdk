@@ -8,47 +8,43 @@ import (
 
 // Governance message types and routes
 const (
-	TypeMsgDeposit        = "deposit"
-	TypeMsgVote           = "vote"
-	TypeMsgSubmitProposal = "submit_proposal"
+	TypeMsgDeposit                   = "deposit"
+	TypeMsgVote                      = "vote"
+	TypeMsgSubmitTextProposal        = "submit_text_proposal"
+	TypeMsgSubmitParamChangeProposal = "submit_param_change_proposal"
 )
 
-var _, _, _ sdk.Msg = MsgSubmitProposal{}, MsgDeposit{}, MsgVote{}
+var _, _, _, _ sdk.Msg = MsgSubmitParamChangeProposal{}, MsgSubmitTextProposal{}, MsgDeposit{}, MsgVote{}
 
 //-----------------------------------------------------------
 // MsgSubmitProposal
-type MsgSubmitProposal struct {
+type MsgSubmitTextProposal struct {
 	Title          string         `json:"title"`           //  Title of the proposal
 	Description    string         `json:"description"`     //  Description of the proposal
-	ProposalType   ProposalKind   `json:"proposal_type"`   //  Type of proposal. Initial set {PlainTextProposal, SoftwareUpgradeProposal}
 	Proposer       sdk.AccAddress `json:"proposer"`        //  Address of the proposer
 	InitialDeposit sdk.Coins      `json:"initial_deposit"` //  Initial deposit paid by sender. Must be strictly positive.
 }
 
-func NewMsgSubmitProposal(title string, description string, proposalType ProposalKind, proposer sdk.AccAddress, initialDeposit sdk.Coins) MsgSubmitProposal {
-	return MsgSubmitProposal{
+func NewMsgSubmitTextProposal(title string, description string, proposer sdk.AccAddress, initialDeposit sdk.Coins) MsgSubmitTextProposal {
+	return MsgSubmitTextProposal{
 		Title:          title,
 		Description:    description,
-		ProposalType:   proposalType,
 		Proposer:       proposer,
 		InitialDeposit: initialDeposit,
 	}
 }
 
 //nolint
-func (msg MsgSubmitProposal) Route() string { return RouterKey }
-func (msg MsgSubmitProposal) Type() string  { return TypeMsgSubmitProposal }
+func (msg MsgSubmitTextProposal) Route() string { return RouterKey }
+func (msg MsgSubmitTextProposal) Type() string  { return TypeMsgSubmitTextProposal }
 
 // Implements Msg.
-func (msg MsgSubmitProposal) ValidateBasic() sdk.Error {
+func (msg MsgSubmitTextProposal) ValidateBasic() sdk.Error {
 	if len(msg.Title) == 0 {
 		return ErrInvalidTitle(DefaultCodespace, msg.Title) // TODO: Proper Error
 	}
 	if len(msg.Description) == 0 {
 		return ErrInvalidDescription(DefaultCodespace, msg.Description) // TODO: Proper Error
-	}
-	if !validProposalType(msg.ProposalType) {
-		return ErrInvalidProposalType(DefaultCodespace, msg.ProposalType)
 	}
 	if len(msg.Proposer) == 0 {
 		return sdk.ErrInvalidAddress(msg.Proposer.String())
@@ -62,17 +58,17 @@ func (msg MsgSubmitProposal) ValidateBasic() sdk.Error {
 	return nil
 }
 
-func (msg MsgSubmitProposal) String() string {
-	return fmt.Sprintf("MsgSubmitProposal{%s, %s, %s, %v}", msg.Title, msg.Description, msg.ProposalType, msg.InitialDeposit)
+func (msg MsgSubmitTextProposal) String() string {
+	return fmt.Sprintf("MsgSubmitProposal{%s, %s, %v}", msg.Title, msg.Description, msg.InitialDeposit)
 }
 
 // Implements Msg.
-func (msg MsgSubmitProposal) Get(key interface{}) (value interface{}) {
+func (msg MsgSubmitTextProposal) Get(key interface{}) (value interface{}) {
 	return nil
 }
 
 // Implements Msg.
-func (msg MsgSubmitProposal) GetSignBytes() []byte {
+func (msg MsgSubmitTextProposal) GetSignBytes() []byte {
 	b, err := msgCdc.MarshalJSON(msg)
 	if err != nil {
 		panic(err)
@@ -81,7 +77,78 @@ func (msg MsgSubmitProposal) GetSignBytes() []byte {
 }
 
 // Implements Msg.
-func (msg MsgSubmitProposal) GetSigners() []sdk.AccAddress {
+func (msg MsgSubmitTextProposal) GetSigners() []sdk.AccAddress {
+	return []sdk.AccAddress{msg.Proposer}
+}
+
+//-----------------------------------------------------------
+// MsgSubmitProposal
+type MsgSubmitParamChangeProposal struct {
+	Title          string         `json:"title"`           //  Title of the proposal
+	Description    string         `json:"description"`     //  Description of the proposal
+	Proposer       sdk.AccAddress `json:"proposer"`        //  Address of the proposer
+	InitialDeposit sdk.Coins      `json:"initial_deposit"` //  Initial deposit paid by sender. Must be strictly positive.
+	ParamSubspace  string         `json:"param_subspace"`  // Subspace of the param trying to be modified
+	ParamKey       []byte         `json:"param_key"`       // Key of the param trying to be modified
+	ParamValue     interface{}    `json:"param_value"`     // New value of the param trying to be modified
+}
+
+func NewMsgSubmitParamChangeProposal(title string, description string, proposer sdk.AccAddress, initialDeposit sdk.Coins, paramSubspace string, paramKey []byte, paramValue interface{}) MsgSubmitParamChangeProposal {
+	return MsgSubmitParamChangeProposal{
+		Title:          title,
+		Description:    description,
+		Proposer:       proposer,
+		InitialDeposit: initialDeposit,
+		ParamSubspace:  paramSubspace,
+		ParamKey:       paramKey,
+		ParamValue:     paramValue,
+	}
+}
+
+//nolint
+func (msg MsgSubmitParamChangeProposal) Route() string { return RouterKey }
+func (msg MsgSubmitParamChangeProposal) Type() string  { return TypeMsgSubmitParamChangeProposal }
+
+// Implements Msg.
+func (msg MsgSubmitParamChangeProposal) ValidateBasic() sdk.Error {
+	if len(msg.Title) == 0 {
+		return ErrInvalidTitle(DefaultCodespace, msg.Title) // TODO: Proper Error
+	}
+	if len(msg.Description) == 0 {
+		return ErrInvalidDescription(DefaultCodespace, msg.Description) // TODO: Proper Error
+	}
+	if len(msg.Proposer) == 0 {
+		return sdk.ErrInvalidAddress(msg.Proposer.String())
+	}
+	if !msg.InitialDeposit.IsValid() {
+		return sdk.ErrInvalidCoins(msg.InitialDeposit.String())
+	}
+	if !msg.InitialDeposit.IsNotNegative() {
+		return sdk.ErrInvalidCoins(msg.InitialDeposit.String())
+	}
+	return nil
+}
+
+func (msg MsgSubmitParamChangeProposal) String() string {
+	return fmt.Sprintf("MsgSubmitParamChangeProposal{%s, %s, %v, %s, %v, %v}", msg.Title, msg.Description, msg.InitialDeposit, msg.ParamSubspace, msg.ParamKey, msg.ParamValue)
+}
+
+// Implements Msg.
+func (msg MsgSubmitParamChangeProposal) Get(key interface{}) (value interface{}) {
+	return nil
+}
+
+// Implements Msg.
+func (msg MsgSubmitParamChangeProposal) GetSignBytes() []byte {
+	b, err := msgCdc.MarshalJSON(msg)
+	if err != nil {
+		panic(err)
+	}
+	return sdk.MustSortJSON(b)
+}
+
+// Implements Msg.
+func (msg MsgSubmitParamChangeProposal) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{msg.Proposer}
 }
 

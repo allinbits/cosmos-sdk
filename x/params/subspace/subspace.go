@@ -120,6 +120,30 @@ func (s Subspace) Modified(ctx sdk.Context, key []byte) bool {
 	return tstore.Has(key)
 }
 
+// Checks to make sure the type being set to a key is correct
+func (s Subspace) ValidSetType(ctx sdk.Context, key []byte, param interface{}) bool {
+	ty, ok := s.table.m[string(key)]
+	if !ok {
+		return false
+	}
+
+	pty := reflect.TypeOf(param)
+	if pty.Kind() == reflect.Ptr {
+		return false
+	}
+
+	if pty != ty {
+		return false
+	}
+
+	_, err := s.cdc.MarshalJSON(param)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
 // Set parameter, return error if stored parameter has different type from input
 // Also set to the transient store to record change
 func (s Subspace) Set(ctx sdk.Context, key []byte, param interface{}) {

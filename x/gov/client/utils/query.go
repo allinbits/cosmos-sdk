@@ -203,8 +203,22 @@ func QueryProposerByTxQuery(
 	for _, info := range infos {
 		for _, msg := range info.Tx.GetMsgs() {
 			// there should only be a single proposal under the given conditions
-			if msg.Type() == gov.TypeMsgSubmitProposal {
-				subMsg := msg.(gov.MsgSubmitProposal)
+			switch msg.Type() {
+			case gov.TypeMsgSubmitTextProposal:
+				subMsg := msg.(gov.MsgSubmitTextProposal)
+
+				proposer := Proposer{
+					ProposalID: proposalID,
+					Proposer:   subMsg.Proposer.String(),
+				}
+
+				if cliCtx.Indent {
+					return cdc.MarshalJSONIndent(proposer, "", "  ")
+				}
+
+				return cdc.MarshalJSON(proposer)
+			case gov.TypeMsgSubmitParamChangeProposal:
+				subMsg := msg.(gov.MsgSubmitParamChangeProposal)
 
 				proposer := Proposer{
 					ProposalID: proposalID,

@@ -21,6 +21,7 @@ const (
 	CodeInvalidVote             sdk.CodeType = 9
 	CodeInvalidGenesis          sdk.CodeType = 10
 	CodeInvalidProposalStatus   sdk.CodeType = 11
+	CodeInvalidParamChange      sdk.CodeType = 12
 )
 
 //----------------------------------------
@@ -64,4 +65,8 @@ func ErrInvalidVote(codespace sdk.CodespaceType, voteOption VoteOption) sdk.Erro
 
 func ErrInvalidGenesis(codespace sdk.CodespaceType, msg string) sdk.Error {
 	return sdk.NewError(codespace, CodeInvalidVote, msg)
+}
+
+func ErrInvalidParamChange(codespace sdk.CodespaceType, msg string) sdk.Error {
+	return sdk.NewError(codespace, CodeInvalidParamChange, msg)
 }

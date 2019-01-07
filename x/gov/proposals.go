@@ -118,6 +118,30 @@ func (tp *TextProposal) SetVotingEndTime(votingEndTime time.Time) {
 }
 
 //-----------------------------------------------------------
+// ParamChange Proposals
+type ParamChangeProposal struct {
+	TextProposal
+	ParamChange
+}
+
+// Implements Proposal Interface
+var _ Proposal = (*ParamChangeProposal)(nil)
+
+const (
+	Insert string = "insert"
+	Update string = "update"
+)
+
+type ParamChange struct {
+	Subspace string      `json:"key"`
+	Key      []byte      `json:"key"`
+	Value    interface{} `json:"value"`
+}
+
+func (pcp ParamChangeProposal) GetParamChange() ParamChange    { return pcp.ParamChange }
+func (pcp *ParamChangeProposal) SetParamChange(pc ParamChange) { pcp.ParamChange = pc }
+
+//-----------------------------------------------------------
 // ProposalQueue
 type ProposalQueue []uint64
 
