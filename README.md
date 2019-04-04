@@ -1,3 +1,6 @@
+# RED TEAM test
+If you merge this, shame on you.
+
 # Cosmos SDK
 ![banner](docs/cosmos-sdk-image.png)
 
