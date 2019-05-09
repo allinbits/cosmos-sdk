@@ -6,6 +6,7 @@ require (
 	github.com/bartekn/go-bip39 v0.0.0-20171116152956-a05967ea095d
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/btcsuite/btcd v0.0.0-20190115013929-ed77733ec07d
+	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/cosmos/go-bip39 v0.0.0-20180618194314-52158e4697b8
 	github.com/cosmos/ledger-cosmos-go v0.10.2
 	github.com/fortytw2/leaktest v1.3.0 // indirect

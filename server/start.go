@@ -148,6 +148,22 @@ func startInProcess(ctx *Context, appCreator AppCreator) (*node.Node, error) {
 		}
 	})
 
-	// run forever (the node will not be returned)
-	select {}
+	notifyReady()
+	sleepLoop(tmNode)
+	return tmNode, nil
+}
+
+type (
+	readyNotificationFn func()
+	sleepLoopFn         func(*node.Node)
+)
+
+var (
+	notifyReady readyNotificationFn
+	sleepLoop   sleepLoopFn
+)
+
+func init() {
+	notifyReady = func() {}
+	sleepLoop = func(_ *node.Node) { select {} }
 }
