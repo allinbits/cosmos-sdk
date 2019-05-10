@@ -1,6 +1,6 @@
 /*
-This file contains application module patterns and associated "manager" functionality.
-The module pattern has been broken down by:
+Package types contains application module patterns and associated "manager"
+functionality.  The module pattern has been broken down by:
  - independent module functionality (AppModuleBasic)
  - inter-dependent module functionality (AppModule)
 
@@ -99,134 +99,22 @@ type AppModule interface {
 	EndBlock(Context, abci.RequestEndBlock) ([]abci.ValidatorUpdate, Tags)
 }
 
-// module manager provides the high level utility for managing and executing
-// operations for a group of modules
-type ModuleManager struct {
-	Modules            map[string]AppModule
-	OrderInitGenesis   []string
-	OrderExportGenesis []string
-	OrderBeginBlockers []string
-	OrderEndBlockers   []string
-}
-
-// NewModuleManager creates a new ModuleManager object
-func NewModuleManager(modules ...AppModule) *ModuleManager {
-
-	moduleMap := make(map[string]AppModule)
-	var modulesStr []string
-	for _, module := range modules {
-		moduleMap[module.Name()] = module
-		modulesStr = append(modulesStr, module.Name())
-	}
-
-	return &ModuleManager{
-		Modules:            moduleMap,
-		OrderInitGenesis:   modulesStr,
-		OrderExportGenesis: modulesStr,
-		OrderBeginBlockers: modulesStr,
-		OrderEndBlockers:   modulesStr,
-	}
-}
-
-// set the order of init genesis calls
-func (mm *ModuleManager) SetOrderInitGenesis(moduleNames ...string) {
-	mm.OrderInitGenesis = moduleNames
-}
-
-// set the order of export genesis calls
-func (mm *ModuleManager) SetOrderExportGenesis(moduleNames ...string) {
-	mm.OrderExportGenesis = moduleNames
-}
-
-// set the order of set begin-blocker calls
-func (mm *ModuleManager) SetOrderBeginBlockers(moduleNames ...string) {
-	mm.OrderBeginBlockers = moduleNames
-}
-
-// set the order of set end-blocker calls
-func (mm *ModuleManager) SetOrderEndBlockers(moduleNames ...string) {
-	mm.OrderEndBlockers = moduleNames
-}
-
-// register all module routes and module querier routes
-func (mm *ModuleManager) RegisterInvariants(invarRouter InvariantRouter) {
-	for _, module := range mm.Modules {
+// helper function to register all module invariants
+func RegisterInvariants(invarRouter InvariantRouter, modules []AppModules) {
+	for _, module := range Modules {
 		module.RegisterInvariants(invarRouter)
 	}
 }
 
-// register all module routes and module querier routes
-func (mm *ModuleManager) RegisterRoutes(router Router, queryRouter QueryRouter) {
-	for _, module := range mm.Modules {
+// helper function to register all module routes and module querier routes
+func RegisterRoutesAndInvariants(router Router, queryRouter QueryRouter, modules []AppModules) {
+	for _, module := range Modules {
 		if module.Route() != "" {
 			router.AddRoute(module.Route(), module.NewHandler())
 		}
 		if module.QuerierRoute() != "" {
 			queryRouter.AddRoute(module.QuerierRoute(), module.NewQuerierHandler())
 		}
-	}
-}
-
-// perform init genesis functionality for modules
-func (mm *ModuleManager) InitGenesis(ctx Context, genesisData map[string]json.RawMessage) abci.ResponseInitChain {
-	var validatorUpdates []abci.ValidatorUpdate
-	for _, moduleName := range mm.OrderInitGenesis {
-		if genesisData[moduleName] == nil {
-			continue
-		}
-		moduleValUpdates := mm.Modules[moduleName].InitGenesis(ctx, genesisData[moduleName])
-
-		// use these validator updates if provided, the module manager assumes
-		// only one module will update the validator set
-		if len(moduleValUpdates) > 0 {
-			validatorUpdates = moduleValUpdates
-		}
-	}
-	return abci.ResponseInitChain{
-		Validators: validatorUpdates,
-	}
-}
-
-// perform export genesis functionality for modules
-func (mm *ModuleManager) ExportGenesis(ctx Context) map[string]json.RawMessage {
-	genesisData := make(map[string]json.RawMessage)
-	for _, moduleName := range mm.OrderExportGenesis {
-		genesisData[moduleName] = mm.Modules[moduleName].ExportGenesis(ctx)
-	}
-	return genesisData
-}
-
-// perform begin block functionality for modules
-func (mm *ModuleManager) BeginBlock(ctx Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	tags := EmptyTags()
-	for _, moduleName := range mm.OrderBeginBlockers {
-		moduleTags := mm.Modules[moduleName].BeginBlock(ctx, req)
-		tags = tags.AppendTags(moduleTags)
-	}
-
-	return abci.ResponseBeginBlock{
-		Tags: tags.ToKVPairs(),
-	}
-}
-
-// perform end block functionality for modules
-func (mm *ModuleManager) EndBlock(ctx Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	validatorUpdates := []abci.ValidatorUpdate{}
-	tags := EmptyTags()
-	for _, moduleName := range mm.OrderEndBlockers {
-		moduleValUpdates, moduleTags := mm.Modules[moduleName].EndBlock(ctx, req)
-		tags = tags.AppendTags(moduleTags)
-
-		// use these validator updates if provided, the module manager assumes
-		// only one module will update the validator set
-		if len(moduleValUpdates) > 0 {
-			validatorUpdates = moduleValUpdates
-		}
-	}
-
-	return abci.ResponseEndBlock{
-		ValidatorUpdates: validatorUpdates,
-		Tags:             tags,
 	}
 }
 

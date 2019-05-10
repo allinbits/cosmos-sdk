@@ -29,6 +29,9 @@ import (
 const appName = "GaiaApp"
 
 var (
+	// ensure GaiaApp fulfills the abci application interface
+	_ abci.Application = GaiaApp{}
+
 	// default home directories for gaiacli
 	DefaultCLIHome = os.ExpandEnv("$HOME/.gaiacli")
 
@@ -76,8 +79,8 @@ type GaiaApp struct {
 	// keys to access the substores
 	keyMain          *sdk.KVStoreKey
 	keyAccount       *sdk.KVStoreKey
-	keyStaking       *sdk.KVStoreKey
 	tkeyStaking      *sdk.TransientStoreKey
+	keyStaking       *sdk.KVStoreKey
 	keySlashing      *sdk.KVStoreKey
 	keyMint          *sdk.KVStoreKey
 	keyDistr         *sdk.KVStoreKey
@@ -89,18 +92,43 @@ type GaiaApp struct {
 
 	// keepers
 	accountKeeper       auth.AccountKeeper
-	feeCollectionKeeper auth.FeeCollectionKeeper
 	bankKeeper          bank.Keeper
-	stakingKeeper       staking.Keeper
-	slashingKeeper      slashing.Keeper
-	mintKeeper          mint.Keeper
-	distrKeeper         distr.Keeper
-	govKeeper           gov.Keeper
 	crisisKeeper        crisis.Keeper
+	distrKeeper         distr.Keeper
+	feeCollectionKeeper auth.FeeCollectionKeeper
+	govKeeper           gov.Keeper
+	mintKeeper          mint.Keeper
 	paramsKeeper        params.Keeper
+	slashingKeeper      slashing.Keeper
+	stakingKeeper       staking.Keeper
 
-	// the module manager
-	mm *sdk.ModuleManager
+	// modules
+	accountsMod sdk.AppModule
+	genutilMod  sdk.AppModule
+	authMod     sdk.AppModule
+	bankMod     sdk.AppModule
+	crisisMod   sdk.AppModule
+	distrMod    sdk.AppModule
+	govMod      sdk.AppModule
+	mintMod     sdk.AppModule
+	slashingMod sdk.AppModule
+	stakingMod  sdk.AppModule
+}
+
+// the app modules
+func (app *GaiaApp) modules() []sdk.Module {
+	return []sdk.Module{app.accountsMod, app.genutilMod, app.authMod,
+		app.bankMod, app.crisisMod, app.distrMod, app.govMod, app.mintMod,
+		app.slashingMod, app.stakingMod,
+	}
+}
+
+// the app keys
+func (app *GaiaApp) keys() []sdk.StoreKey {
+	return []sdk.StoreKey{keyMain, keyAccount, tkeyStaking, keyStaking,
+		keySlashing, keyMint, keyDistr, tkeyDistr, keyGov, keyFeeCollection,
+		keyParams, tkeyParams,
+	}
 }
 
 // NewGaiaApp returns a reference to an initialized GaiaApp.
@@ -168,39 +196,20 @@ func NewGaiaApp(logger log.Logger, db dbm.DB, traceStore io.Writer, loadLatest b
 	app.stakingKeeper = *stakingKeeper.SetHooks(
 		staking.NewMultiStakingHooks(app.distrKeeper.Hooks(), app.slashingKeeper.Hooks()))
 
-	app.mm = sdk.NewModuleManager(
-		genaccounts.NewAppModule(app.accountKeeper),
-		genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx),
-		auth.NewAppModule(app.accountKeeper, app.feeCollectionKeeper),
-		bank.NewAppModule(app.bankKeeper, app.accountKeeper),
-		crisis.NewAppModule(app.crisisKeeper, app.Logger()),
-		distr.NewAppModule(app.distrKeeper),
-		gov.NewAppModule(app.govKeeper),
-		mint.NewAppModule(app.mintKeeper),
-		slashing.NewAppModule(app.slashingKeeper, app.stakingKeeper),
-		staking.NewAppModule(app.stakingKeeper, app.feeCollectionKeeper, app.distrKeeper, app.accountKeeper),
-	)
+	app.accountsMod = genaccounts.NewAppModule(app.accountKeeper)
+	app.genutilMod = genutil.NewAppModule(app.accountKeeper, app.stakingKeeper, app.BaseApp.DeliverTx)
+	app.authMod = auth.NewAppModule(app.accountKeeper, app.feeCollectionKeeper)
+	app.bankMod = bank.NewAppModule(app.bankKeeper, app.accountKeeper)
+	app.crisisMod = crisis.NewAppModule(app.crisisKeeper, app.Logger())
+	app.distrMod = distr.NewAppModule(app.distrKeeper)
+	app.govMod = gov.NewAppModule(app.govKeeper)
+	app.mintMod = mint.NewAppModule(app.mintKeeper)
+	app.slashingMod = slashing.NewAppModule(app.slashingKeeper, app.stakingKeeper)
+	app.stakingMod = staking.NewAppModule(app.stakingKeeper, app.feeCollectionKeeper, app.distrKeeper, app.accountKeeper)
 
-	// During begin block slashing happens after distr.BeginBlocker so that
-	// there is nothing left over in the validator fee pool, so as to keep the
-	// CanWithdrawInvariant invariant.
-	app.mm.SetOrderBeginBlockers(mint.ModuleName, distr.ModuleName, slashing.ModuleName)
-
-	app.mm.SetOrderEndBlockers(gov.ModuleName, staking.ModuleName)
-
-	// genutils must occur after staking so that pools are properly
-	// initialized with tokens from genesis accounts.
-	app.mm.SetOrderInitGenesis(genaccounts.ModuleName, distr.ModuleName,
-		staking.ModuleName, auth.ModuleName, bank.ModuleName, slashing.ModuleName,
-		gov.ModuleName, mint.ModuleName, crisis.ModuleName, genutil.ModuleName)
-
-	app.mm.RegisterInvariants(&app.crisisKeeper)
-	app.mm.RegisterRoutes(app.Router(), app.QueryRouter())
-
-	// initialize stores
-	app.MountStores(app.keyMain, app.keyAccount, app.keyStaking, app.keyMint,
-		app.keyDistr, app.keySlashing, app.keyGov, app.keyFeeCollection,
-		app.keyParams, app.tkeyParams, app.tkeyStaking, app.tkeyDistr)
+	sdk.RegisterInvariants(&app.crisisKeeper, app.modules())
+	sdk.RegisterRoutes(app.Router(), app.QueryRouter(), app.modules())
+	app.MountStores(app.keys())
 
 	// initialize BaseApp
 	app.SetInitChainer(app.InitChainer)
@@ -219,18 +228,51 @@ func NewGaiaApp(logger log.Logger, db dbm.DB, traceStore io.Writer, loadLatest b
 
 // application updates every begin block
 func (app *GaiaApp) BeginBlocker(ctx sdk.Context, req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	return app.mm.BeginBlock(ctx, req)
+
+	// During begin block slashing happens after distr.BeginBlocker so that
+	// there is nothing left over in the validator fee pool, so as to keep the
+	// CanWithdrawInvariant invariant.
+	mintTags := app.mintMod.BeginBlock(ctx, req)
+	distrTags := app.distrMod.BeginBlock(ctx, req)
+	slashingTags := app.slashingMod.BeginBlock(ctx, req)
+	tags := mintTags.AppendTags(distrTags).AppendTags(slashingTags)
+
+	return abci.ResponseBeginBlock{
+		Tags: tags,
+	}
 }
 
 // application updates every end block
 func (app *GaiaApp) EndBlocker(ctx sdk.Context, req abci.RequestEndBlock) abci.ResponseEndBlock {
-	return app.mm.EndBlock(ctx, req)
+
+	_, govTags := app.govMod.EndBlock(ctx, req)
+	validatorUpdates, stakingTags := app.stakingMod.EndBlock(ctx, req)
+	tags := govTags.AppendTags(stakingTags)
+
+	return abci.ResponseEndBlock{
+		ValidatorUpdates: validatorUpdates,
+		Tags:             tags,
+	}
 }
 
 // application update at chain initialization
 func (app *GaiaApp) InitChainer(ctx sdk.Context, req abci.RequestInitChain) abci.ResponseInitChain {
 	var genesisState GenesisState
 	app.cdc.MustUnmarshalJSON(req.AppStateBytes, &genesisState)
+
+	// genutils must occur after staking so that pools are properly
+	// initialized with tokens from genesis accounts.
+	app.accountsMod.InitGenesis(ctx, genesisState[app.accountsMod.Name()])
+	app.distrMod.InitGenesis(ctx, genesisState[app.distrMod.Name()])
+	app.stakingMod.InitGenesis(ctx, genesisState[app.stakingMod.Name()])
+	app.authMod.InitGenesis(ctx, genesisState[app.authMod.Name()])
+	app.bankMod.InitGenesis(ctx, genesisState[app.bankMod.Name()])
+	app.slashingMod.InitGenesis(ctx, genesisState[app.slashingMod.Name()])
+	app.govMod.InitGenesis(ctx, genesisState[app.govMod.Name()])
+	app.mintMod.InitGenesis(ctx, genesisState[app.mintMod.Name()])
+	app.crisisMod.InitGenesis(ctx, genesisState[app.crisisMod.Name()])
+	app.genutilMod.InitGenesis(ctx, genesisState[app.genutilMod.Name()])
+
 	return app.mm.InitGenesis(ctx, genesisState)
 }
 

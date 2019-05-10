@@ -24,7 +24,12 @@ func (app *GaiaApp) ExportAppStateAndValidators(forZeroHeight bool, jailWhiteLis
 		app.prepForZeroHeightGenesis(ctx, jailWhiteList)
 	}
 
-	genState := app.mm.ExportGenesis(ctx)
+	// export the modules in no particular order
+	genesisData := make(map[string]json.RawMessage)
+	for _, module := range app.modules() {
+		genesisData[module.Name()] = module.ExportGenesis(ctx)
+	}
+
 	appState, err = codec.MarshalJSONIndent(app.cdc, genState)
 	if err != nil {
 		return nil, nil, err

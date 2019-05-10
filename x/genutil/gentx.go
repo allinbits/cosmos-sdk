@@ -37,10 +37,6 @@ func ValidateAccountInGenesis(appGenesisState map[string]json.RawMessage,
 	cdc.MustUnmarshalJSON(stakingDataBz, &stakingData)
 	bondDenom := stakingData.Params.BondDenom
 
-	genUtilDataBz := appGenesisState[staking.ModuleName]
-	var genesisState GenesisState
-	cdc.MustUnmarshalJSON(genUtilDataBz, &genesisState)
-
 	var err error
 	genAccIterator.IterateGenesisAccounts(cdc, appGenesisState,
 		func(acc auth.Account) (stop bool) {

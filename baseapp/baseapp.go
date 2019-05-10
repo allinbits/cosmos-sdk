@@ -141,7 +141,7 @@ func (app *BaseApp) SetCommitMultiStoreTracer(w io.Writer) {
 
 // MountStores mounts all IAVL or DB stores to the provided keys in the BaseApp
 // multistore.
-func (app *BaseApp) MountStores(keys ...sdk.StoreKey) {
+func (app *BaseApp) MountStores(keys []sdk.StoreKey) {
 	for _, key := range keys {
 		switch key.(type) {
 		case *sdk.KVStoreKey:
