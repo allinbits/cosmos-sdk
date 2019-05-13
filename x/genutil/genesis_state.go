@@ -84,7 +84,12 @@ func GenesisStateFromGenFile(cdc *codec.Codec, genFile string,
 }
 
 // validate GenTx transactions
-func ValidateGenesis(genesisState GenesisState) error {
+func ValidateGenesis(genesisState GenesisState, sgs StakingGenesisState) error {
+	if gvi != nil &&
+		len(sgs.HasGenesisValidators()) > 0 && len(genesisState.GenTxs) > 0 {
+		return fmt.Errorf(
+			"genesis cannot contain both genesis transactions and exported validators")
+	}
 	for i, genTx := range genesisState.GenTxs {
 		var tx auth.StdTx
 		if err := moduleCdc.UnmarshalJSON(genTx, &tx); err != nil {

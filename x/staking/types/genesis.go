@@ -39,3 +39,8 @@ func DefaultGenesisState() GenesisState {
 		Params: DefaultParams(),
 	}
 }
+
+// HasGenesisValidators - true if the genesis state has validators
+func (gs GenesisState) HasGenesisValidators() {
+	return len(gs.Validators) > 0
+}

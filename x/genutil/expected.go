@@ -30,3 +30,8 @@ type GenesisAccountsIterator interface {
 		iterateFn func(auth.Account) (stop bool),
 	)
 }
+
+// The expected interface for determining if there are genesis validator objects
+type StakingGenesisState interface {
+	HasGenesisValidators() bool
+}

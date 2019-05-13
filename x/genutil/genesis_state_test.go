@@ -15,6 +15,34 @@ var (
 	pk2 = ed25519.GenPrivKey().PubKey()
 )
 
+// GenesisValidatorsInfo type for testing
+type testGVI bool
+
+var _ GenesisValidatorsInfo = (false).(testGVI)
+
+func (tg testGVI) HasGenesisValidators() {
+	return tg
+}
+
+func TestValidateGenesisWithGenesisValidators(t *testing.T) {
+
+	desc := staking.NewDescription("testname", "", "", "")
+	comm := staking.CommissionMsg{}
+
+	msg1 := staking.NewMsgCreateValidator(sdk.ValAddress(pk1.Address()), pk1,
+		sdk.NewInt64Coin(sdk.DefaultBondDenom, 50), desc, comm, sdk.OneInt())
+
+	genTxs := auth.NewStdTx([]sdk.Msg{msg1}, auth.StdFee{}, nil, "")
+	genesisState := NewGenesisStateFromStdTx([]auth.StdTx{genTxs})
+
+	err := ValidateGenesis(genesisState, (false).(testGVI))
+	require.NoError(t, err)
+
+	// has genesis validators thus must fail
+	err := ValidateGenesis(genesisState, (true).(testGVI))
+	require.Error(t, err)
+}
+
 func TestValidateGenesisMultipleMessages(t *testing.T) {
 
 	desc := staking.NewDescription("testname", "", "", "")
@@ -29,7 +57,7 @@ func TestValidateGenesisMultipleMessages(t *testing.T) {
 	genTxs := auth.NewStdTx([]sdk.Msg{msg1, msg2}, auth.StdFee{}, nil, "")
 	genesisState := NewGenesisStateFromStdTx([]auth.StdTx{genTxs})
 
-	err := ValidateGenesis(genesisState)
+	err := ValidateGenesis(genesisState, nil)
 	require.Error(t, err)
 }
 
@@ -41,6 +69,6 @@ func TestValidateGenesisBadMessage(t *testing.T) {
 	genTxs := auth.NewStdTx([]sdk.Msg{msg1}, auth.StdFee{}, nil, "")
 	genesisState := NewGenesisStateFromStdTx([]auth.StdTx{genTxs})
 
-	err := ValidateGenesis(genesisState)
+	err := ValidateGenesis(genesisState, nil)
 	require.Error(t, err)
 }

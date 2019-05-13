@@ -17,7 +17,16 @@ var (
 const ModuleName = "genutil"
 
 // app module basics object
-type AppModuleBasic struct{}
+type AppModuleBasic struct {
+	gvi GenesisValidatorsInfo
+}
+
+// NewAppModuleBasic creates a new AppModuleBasic object
+func NewAppModuleBasic(gvi GenesisValidatorsInfo) AppModuleBasic {
+	return AppModuleBasic{
+		gvi: gvi,
+	}
+}
 
 // module name
 func (AppModuleBasic) Name() string {
@@ -39,7 +48,7 @@ func (AppModuleBasic) ValidateGenesis(bz json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	return ValidateGenesis(data)
+	return ValidateGenesis(data, gvi)
 }
 
 //___________________________
