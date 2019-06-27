@@ -16,6 +16,8 @@ tools/bin/*
 examples/build/*
 docs/_build
 docs/tutorial
+docs/node_modules
+docs/.vuepress/dist
 dist
 tools-stamp
 

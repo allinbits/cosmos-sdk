@@ -1,3 +1,7 @@
+---
+order: false
+---
+
 # Invariants
 
 ## What is an invariant
