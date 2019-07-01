@@ -43,6 +43,10 @@ module.exports = {
     },
   },
   themeConfig: {
+    repo: 'cosmos/cosmos-sdk',
+    docsDir: 'docs',
+    editLinks: true,
+    docsBranch: 'gamarin/new-docs',
     locales: {
       '/': {
         label: 'English',
