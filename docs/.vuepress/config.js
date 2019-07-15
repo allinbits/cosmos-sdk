@@ -28,6 +28,7 @@ const sidebar = (directory, array) => {
 
 module.exports = {
   title: 'Cosmos SDK',
+  base: process.env.VUEPRESS_BASE || '/',
   locales: {
     '/': {
       lang: 'en-US',
