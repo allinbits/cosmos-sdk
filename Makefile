@@ -61,6 +61,13 @@ godocs:
 	@echo "--> Wait a few seconds and visit http://localhost:6060/pkg/github.com/cosmos/cosmos-sdk/types"
 	godoc -http=:6060
 
+# build_docs:
+# 	while read p; do
+# 		(cd cosmos-sdk/docs && git checkout "$p" && npm install && VUEPRESS_BASE="/$p/" npm run build)
+# 		mkdir -p ./output/"$p"
+# 		cp -r ./cosmos-sdk/docs/.vuepress/dist/* ./output/"$p"/
+# 		echo "<a href='$p'>$p</a>" >> ./output/index.html
+# 	done < cosmos-sdk/docs/versions
 
 ########################################
 ### Testing
