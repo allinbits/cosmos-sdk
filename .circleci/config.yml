@@ -22,11 +22,11 @@ docs_update: &docs_deploy
     AWS_REGION: us-east-1
 
 jobs:
-  build_docs:
-    # <<: *docs_build_image
-    # steps:
-    #   - checkout
-    #   - run: make build_docs
+  # build_docs:
+  #   <<: *docs_build_image
+  #   steps:
+  #     - checkout
+  #     - run: make build_docs
 
   setup_dependencies:
     <<: *linux_defaults
@@ -60,6 +60,22 @@ jobs:
           paths:
             - bin
             - profiles
+
+  lint:
+    <<: *linux_defaults
+    parallelism: 1
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - checkout
+      - restore_cache:
+          keys:
+            - go-mod-v1-{{ checksum "go.sum" }}
+      - run:
+          name: Lint source
+          command: |
+            export PATH=/tmp/workspace/bin:$PATH
+            make ci-lint
 
   test_sim_app_nondeterminism:
     <<: *linux_defaults
@@ -279,6 +295,9 @@ workflows:
             tags:
               only:
                 - /^v.*/
+      - lint:
+          requires:
+            - setup_dependencies
       - test_sim_app_nondeterminism:
           requires:
             - setup_dependencies
