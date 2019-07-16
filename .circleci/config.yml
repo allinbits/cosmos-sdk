@@ -5,10 +5,10 @@ defaults: &linux_defaults
   docker:
     - image: circleci/golang:1.12.5
 
-# set_build_image: &docs_build_image
-#   working_directory: ~/repo
-#   docker:
-#     - image: circleci/node:10.15.0-stretch
+set_build_image: &docs_build_image
+  working_directory: ~/repo
+  docker:
+    - image: circleci/node:10.15.0-stretch
 
 ############
 #
@@ -22,11 +22,11 @@ docs_update: &docs_deploy
     AWS_REGION: us-east-1
 
 jobs:
-  # build_docs:
-  #   <<: *docs_build_image
-  #   steps:
-  #     - checkout
-  #     - run: make build_docs
+  build_docs:
+    <<: *docs_build_image
+    steps:
+      - checkout
+      - run: make build_docs
 
   setup_dependencies:
     <<: *linux_defaults
