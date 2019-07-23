@@ -70,12 +70,20 @@ godocs:
 	godoc -http=:6060
 
 build_docs:
+	cd docs
 	while read p; do
-		(cd ~/repo/docs && git checkout "$p" && npm install && VUEPRESS_BASE="/$p/" npm run build)
+		(git checkout "$p" && npm install && VUEPRESS_BASE="/$p/" npm run build)
 		mkdir -p ~/output/"$p"
-		cp -r ~/docs/.vuepress/dist/* ~/output/"$p"/
+		cp -r .vuepress/dist/* ~/output/"$p"/
 		echo "<a href='$p'>$p</a>" >> ~/output/index.html
-	done < ~/repo/docs/versions
+	done < versions
+
+sync_docs:
+	cd ~/output
+	echo "role_arn = ${DEPLOYMENT_ROLE_ARN}" >> /root/.aws/config
+	echo "CI job = ${CIRCLE_BUILD_URL}" >> version.html
+	aws s3 sync . s3://${WEBSITE_BUCKET} --profile terraform --delete
+	aws cloudfront create-invalidation --distribution-id ${CF_DISTRIBUTION_ID} --profile terraform --path "/*"
 
 ########################################
 ### Testing
@@ -206,4 +214,4 @@ benchmark devdoc_init devdoc devdoc_save devdoc_update runsim \
 format test_sim_app_nondeterminism test_sim_modules test_sim_app_fast \
 test_sim_app_custom_genesis_fast test_sim_app_custom_genesis_multi_seed \
 test_sim_app_multi_seed test_sim_app_import_export test_sim_benchmark_invariants \
-go-mod-cache
+go-mod-cache build_docs sync_docs godocs
