@@ -5,28 +5,19 @@ defaults: &linux_defaults
   docker:
     - image: circleci/golang:1.12.5
 
-set_build_image: &docs_build_image
-  working_directory: ~/repo
+set_build_image: &docs_build_deploy
   docker:
-    - image: circleci/node:10.15.0-stretch
-
-############
-#
-# Configure docs deployment
-
-docs_update: &docs_deploy
-  working_directory: ~/repo
-  docker:
-    - image: tendermintdev/jq_curl
+    - image: tendermintdev/docker-website-deployment
   environment:
     AWS_REGION: us-east-1
 
 jobs:
   build_docs:
-    <<: *docs_build_image
+    <<: *docs_build_deploy
     steps:
       - checkout
       - run: make build_docs
+      - run: make sync_docs
 
   setup_dependencies:
     <<: *linux_defaults
@@ -228,30 +219,6 @@ jobs:
           name: upload
           command: bash <(curl -s https://codecov.io/bash) -f coverage.txt
 
-  deploy_docs:
-    <<: *docs_deploy
-    steps:
-      - checkout
-      - run:
-          name: Trigger website build
-          command: |
-            curl --silent \
-                 --show-error \
-                 -X POST \
-                 --header "Content-Type: application/json" \
-                 -d "{\"branch\": \"$CIRCLE_BRANCH\"}" \
-                 "https://circleci.com/api/v1.1/project/github/$CIRCLE_PROJECT_USERNAME/$WEBSITE_REPO_NAME/build?circle-token=$TENDERBOT_API_TOKEN" > response.json
-
-            RESULT=`jq -r '.status' response.json`
-            MESSAGE=`jq -r '.message' response.json`
-
-            if [[ ${RESULT} == "null" ]] || [[ ${RESULT} -ne "200" ]]; then
-                echo "CircleCI API call failed: $MESSAGE"
-                exit 1
-            else
-                echo "Website build started"
-            fi
-
   check_statik:
     <<: *linux_defaults
     parallelism: 1
@@ -283,12 +250,6 @@ workflows:
       - check_statik:
           requires:
             - setup_dependencies
-      - deploy_docs:
-          filters:
-            branches:
-              only:
-                - master
-                - develop
       - setup_dependencies:
           # filters here are needed to enable this job also for tags
           filters:
@@ -327,3 +288,5 @@ workflows:
       - upload_coverage:
           requires:
             - test_cover
+      - build_docs:
+          context: docs-deployment-master
