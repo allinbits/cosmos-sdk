@@ -1,7 +1,3 @@
----
-order: false
----
-
 # Encoding
 
 TODO
