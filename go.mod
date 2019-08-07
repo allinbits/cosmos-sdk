@@ -27,9 +27,9 @@ require (
 	github.com/stretchr/testify v1.3.0
 	github.com/tendermint/btcd v0.1.1
 	github.com/tendermint/crypto v0.0.0-20180820045704-3764759f34a5
-	github.com/tendermint/go-amino v0.15.0
-	github.com/tendermint/iavl v0.12.4
-	github.com/tendermint/tendermint v0.32.2
+	github.com/tendermint/go-amino v0.15.1-0.20190807100446-27fcf2ff54e1
+	github.com/tendermint/iavl v0.12.5-0.20190807103634-801ba37a56ab
+	github.com/tendermint/tendermint v0.31.2-0.20190807101012-f1b1be579713
 	github.com/tendermint/tm-db v0.1.1
 	gopkg.in/yaml.v2 v2.2.2
 )
