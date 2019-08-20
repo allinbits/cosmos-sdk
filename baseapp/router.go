@@ -2,6 +2,7 @@ package baseapp
 
 import (
 	"fmt"
+	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
@@ -23,12 +24,13 @@ func NewRouter() *router { // nolint: golint
 
 // AddRoute adds a route path to the router with a given handler. The route must
 // be alphanumeric.
+// TODO: enforce routes alphanumeric with '/' delimiter
 func (rtr *router) AddRoute(path string, h sdk.Handler) sdk.Router {
-	if !isAlphaNumeric(path) {
-		panic("route expressions can only contain alphanumeric characters")
-	}
-	if rtr.routes[path] != nil {
-		panic(fmt.Sprintf("route %s has already been initialized", path))
+	for route := range rtr.routes {
+		// no two routes can be prefixes of one another
+		if strings.HasPrefix(route, path) || strings.HasPrefix(path, route) {
+			panic(fmt.Sprintf("Cannot register two routes that are prefixes of one another: %s, %s", route, path))
+		}
 	}
 
 	rtr.routes[path] = h
@@ -39,5 +41,10 @@ func (rtr *router) AddRoute(path string, h sdk.Handler) sdk.Router {
 //
 // TODO: Handle expressive matches.
 func (rtr *router) Route(path string) sdk.Handler {
-	return rtr.routes[path]
+	for route := range rtr.routes {
+		if strings.HasPrefix(path, route) {
+			return rtr.routes[route]
+		}
+	}
+	return nil
 }
