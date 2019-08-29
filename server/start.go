@@ -153,6 +153,8 @@ func startInProcess(ctx *Context, appCreator AppCreator) (*node.Node, error) {
 			return nil, err
 		}
 
+		defer f.Close()
+
 		ctx.Logger.Info("starting CPU profiler", "profile", cpuProfile)
 		if err := pprof.StartCPUProfile(f); err != nil {
 			return nil, err
@@ -160,11 +162,11 @@ func startInProcess(ctx *Context, appCreator AppCreator) (*node.Node, error) {
 	}
 
 	TrapSignal(func() {
-		if tmNode.IsRunning() {
-			ctx.Logger.Info("stopping CPU profiler", "profile", cpuProfile)
-			pprof.StopCPUProfile()
-			ctx.Logger.Info("exiting...")
+		ctx.Logger.Info("stopping CPU profiler", "profile", cpuProfile)
+		pprof.StopCPUProfile()
+		ctx.Logger.Info("exiting...")
 
+		if tmNode.IsRunning() {
 			_ = tmNode.Stop()
 		}
 	})
