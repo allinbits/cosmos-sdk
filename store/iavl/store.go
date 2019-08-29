@@ -22,7 +22,7 @@ const (
 )
 
 // load the iavl store
-func LoadStore(db dbm.DB, id types.CommitID, pruning types.PruningOptions) (types.CommitStore, error) {
+func LoadStore(db dbm.DB, id types.CommitID, pruning types.PruningOptions) (types.CommitKVStore, error) {
 	tree := iavl.NewMutableTree(db, defaultIAVLCacheSize)
 	_, err := tree.LoadVersion(id.Version)
 	if err != nil {

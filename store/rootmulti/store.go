@@ -32,11 +32,13 @@ type Store struct {
 	lastCommitID types.CommitID
 	pruningOpts  types.PruningOptions
 	storesParams map[types.StoreKey]storeParams
-	stores       map[types.StoreKey]types.CommitStore
+	stores       map[types.StoreKey]types.CommitKVStore
 	keysByName   map[string]types.StoreKey
 
 	traceWriter  io.Writer
 	traceContext types.TraceContext
+
+	interBlockCache types.MultiStorePersistentCache
 }
 
 var _ types.CommitMultiStore = (*Store)(nil)
@@ -47,9 +49,16 @@ func NewStore(db dbm.DB) *Store {
 	return &Store{
 		db:           db,
 		storesParams: make(map[types.StoreKey]storeParams),
-		stores:       make(map[types.StoreKey]types.CommitStore),
+		stores:       make(map[types.StoreKey]types.CommitKVStore),
 		keysByName:   make(map[string]types.StoreKey),
 	}
+}
+
+// SetInterBlockCache sets the Store's internal inter-block (persistent) cache.
+// When this is defined, all CommitKVStores will be wrapped with their respective
+// inter-block cache.
+func (rs *Store) SetInterBlockCache(c types.MultiStorePersistentCache) {
+	rs.interBlockCache = c
 }
 
 // Implements CommitMultiStore
@@ -132,7 +141,7 @@ func (rs *Store) LoadVersion(ver int64) error {
 	}
 
 	// Load each Store
-	var newStores = make(map[types.StoreKey]types.CommitStore)
+	var newStores = make(map[types.StoreKey]types.CommitKVStore)
 	for key, storeParams := range rs.storesParams {
 		var id types.CommitID
 		info, ok := infos[key]
@@ -346,7 +355,7 @@ func parsePath(path string) (storeName string, subpath string, err errors.Error)
 
 //----------------------------------------
 
-func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID, params storeParams) (store types.CommitStore, err error) {
+func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID, params storeParams) (store types.CommitKVStore, err error) {
 	var db dbm.DB
 	if params.db != nil {
 		db = dbm.NewPrefixDB(params.db, []byte("s/_/"))
@@ -484,7 +493,7 @@ func setLatestVersion(batch dbm.Batch, version int64) {
 }
 
 // Commits each store and returns a new commitInfo.
-func commitStores(version int64, storeMap map[types.StoreKey]types.CommitStore) commitInfo {
+func commitStores(version int64, storeMap map[types.StoreKey]types.CommitKVStore) commitInfo {
 	storeInfos := make([]storeInfo, 0, len(storeMap))
 
 	for key, store := range storeMap {
