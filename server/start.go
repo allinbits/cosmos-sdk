@@ -43,20 +43,6 @@ func StartCmd(ctx *Context, appCreator AppCreator) *cobra.Command {
 
 			ctx.Logger.Info("Starting ABCI with Tendermint")
 
-			if cpuProfile := viper.GetString(flagCPUProfile); cpuProfile != "" {
-				f, err := os.Create(cpuProfile)
-				if err != nil {
-					return err
-				}
-
-				fmt.Printf("Starting CPU profiler (%s)\n", cpuProfile)
-				if err := pprof.StartCPUProfile(f); err != nil {
-					return err
-				}
-
-				defer pprof.StopCPUProfile()
-			}
-
 			_, err := startInProcess(ctx, appCreator)
 			return err
 		},
@@ -160,9 +146,25 @@ func startInProcess(ctx *Context, appCreator AppCreator) (*node.Node, error) {
 		return nil, err
 	}
 
+	cpuProfile := viper.GetString(flagCPUProfile)
+	if cpuProfile != "" {
+		f, err := os.Create(cpuProfile)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx.Logger.Info("starting CPU profiler", "profile", cpuProfile)
+		if err := pprof.StartCPUProfile(f); err != nil {
+			return nil, err
+		}
+	}
+
 	TrapSignal(func() {
 		if tmNode.IsRunning() {
 			_ = tmNode.Stop()
+
+			ctx.Logger.Info("stopping CPU profiler", "profile", cpuProfile)
+			pprof.StopCPUProfile()
 		}
 	})
 
