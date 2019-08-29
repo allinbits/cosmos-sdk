@@ -362,25 +362,45 @@ func (rs *Store) loadCommitStoreFromParams(key types.StoreKey, id types.CommitID
 	} else {
 		db = dbm.NewPrefixDB(rs.db, []byte("s/k:"+params.key.Name()+"/"))
 	}
+
 	switch params.typ {
 	case types.StoreTypeMulti:
 		panic("recursive MultiStores not yet supported")
 		// TODO: id?
 		// return NewCommitMultiStore(db, id)
 	case types.StoreTypeIAVL:
-		store, err = iavl.LoadStore(db, id, rs.pruningOpts)
-		return
+		// store, err = iavl.LoadStore(db, id, rs.pruningOpts)
+		// return
+
+		store, err := iavl.LoadStore(db, id, rs.pruningOpts)
+		if err != nil {
+			return nil, err
+		}
+
+		if rs.interBlockCache != nil {
+			// Wrap and get a CommitKVStore with inter-block caching. Note, this should
+			// only wrap the primary CommitKVStore, not any store that is already
+			// cache-wrapped as that will create unexpected behavior.
+			fmt.Printf("inter-block caching for store: %s\n", key.String())
+			store = rs.interBlockCache.GetStoreCache(key, store)
+		}
+
+		return store, err
+
 	case types.StoreTypeDB:
 		store = commitDBStoreAdapter{dbadapter.Store{db}}
 		return
+
 	case types.StoreTypeTransient:
 		_, ok := key.(*types.TransientStoreKey)
 		if !ok {
 			err = fmt.Errorf("invalid StoreKey for StoreTypeTransient: %s", key.String())
 			return
 		}
+
 		store = transient.NewStore()
 		return
+
 	default:
 		panic(fmt.Sprintf("unrecognized store type %v", params.typ))
 	}

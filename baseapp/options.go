@@ -18,6 +18,12 @@ func SetPruning(opts sdk.PruningOptions) func(*BaseApp) {
 	return func(bap *BaseApp) { bap.cms.SetPruning(opts) }
 }
 
+// SetInterBlockCache provides a BaseApp option function that sets the
+// inter-block cache.
+func SetInterBlockCache(cache sdk.MultiStorePersistentCache) func(*BaseApp) {
+	return func(app *BaseApp) { app.setInterBlockCache(cache) }
+}
+
 // SetMinGasPrices returns an option that sets the minimum gas prices on the app.
 func SetMinGasPrices(gasPricesStr string) func(*BaseApp) {
 	gasPrices, err := sdk.ParseDecCoins(gasPricesStr)

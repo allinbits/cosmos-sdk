@@ -75,6 +75,9 @@ type BaseApp struct {
 	// TODO: Move this in the future to baseapp param store on main store.
 	consensusParams *abci.ConsensusParams
 
+	// an inter-block write-through cache provided to the context during deliverState
+	interBlockCache sdk.MultiStorePersistentCache
+
 	// The minimum gas prices a validator is willing to accept for processing a
 	// transaction. This is mainly used for DoS and spam prevention.
 	minGasPrices sdk.DecCoins
@@ -108,7 +111,16 @@ func NewBaseApp(
 		option(app)
 	}
 
+	if app.interBlockCache != nil {
+		fmt.Println("Creating BaseApp with inter-block cache")
+		app.cms.SetInterBlockCache(app.interBlockCache)
+	}
+
 	return app
+}
+
+func (app *BaseApp) setInterBlockCache(cache sdk.MultiStorePersistentCache) {
+	app.interBlockCache = cache
 }
 
 // Name returns the name of the BaseApp.
