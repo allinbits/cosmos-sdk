@@ -146,6 +146,8 @@ func startInProcess(ctx *Context, appCreator AppCreator) (*node.Node, error) {
 		return nil, err
 	}
 
+	var cpuProfileCleanupFn func()
+
 	cpuProfile := viper.GetString(flagCPUProfile)
 	if cpuProfile != "" {
 		f, err := os.Create(cpuProfile)
@@ -153,17 +155,23 @@ func startInProcess(ctx *Context, appCreator AppCreator) (*node.Node, error) {
 			return nil, err
 		}
 
-		defer f.Close()
-
 		ctx.Logger.Info("starting CPU profiler", "profile", cpuProfile)
 		if err := pprof.StartCPUProfile(f); err != nil {
 			return nil, err
 		}
+
+		cpuProfileCleanupFn = func() {
+			f.Close()
+			ctx.Logger.Info("stopping CPU profiler", "profile", cpuProfile)
+			pprof.StopCPUProfile()
+		}
 	}
 
 	TrapSignal(func() {
-		ctx.Logger.Info("stopping CPU profiler", "profile", cpuProfile)
-		pprof.StopCPUProfile()
+		if cpuProfileCleanupFn != nil {
+			cpuProfileCleanupFn()
+		}
+
 		ctx.Logger.Info("exiting...")
 
 		if tmNode.IsRunning() {

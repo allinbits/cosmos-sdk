@@ -215,10 +215,10 @@ func TrapSignal(cleanupFunc func()) {
 		sig := <-sigs
 		switch sig {
 		case syscall.SIGTERM:
-			defer cleanupFunc()
+			cleanupFunc()
 			os.Exit(128 + int(syscall.SIGTERM))
 		case syscall.SIGINT:
-			defer cleanupFunc()
+			cleanupFunc()
 			os.Exit(128 + int(syscall.SIGINT))
 		}
 	}()
