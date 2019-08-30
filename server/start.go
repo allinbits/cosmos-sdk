@@ -37,11 +37,11 @@ func StartCmd(ctx *Context, appCreator AppCreator) *cobra.Command {
 		Short: "Run the full node",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !viper.GetBool(flagWithTendermint) {
-				ctx.Logger.Info("Starting ABCI without Tendermint")
+				ctx.Logger.Info("starting ABCI without Tendermint")
 				return startStandAlone(ctx, appCreator)
 			}
 
-			ctx.Logger.Info("Starting ABCI with Tendermint")
+			ctx.Logger.Info("starting ABCI with Tendermint")
 
 			_, err := startInProcess(ctx, appCreator)
 			return err
@@ -164,11 +164,12 @@ func startInProcess(ctx *Context, appCreator AppCreator) (*node.Node, error) {
 	TrapSignal(func() {
 		ctx.Logger.Info("stopping CPU profiler", "profile", cpuProfile)
 		pprof.StopCPUProfile()
-		ctx.Logger.Info("exiting...")
 
 		if tmNode.IsRunning() {
 			_ = tmNode.Stop()
 		}
+
+		ctx.Logger.Info("exiting...")
 	})
 
 	// run forever (the node will not be returned)
