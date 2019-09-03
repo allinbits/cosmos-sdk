@@ -172,6 +172,8 @@ github.com/tendermint/crypto v0.0.0-20180820045704-3764759f34a5/go.mod h1:z4YtwM
 github.com/tendermint/go-amino v0.14.1/go.mod h1:i/UKE5Uocn+argJJBb12qTZsCDBcAYMbR92AaJVmKso=
 github.com/tendermint/go-amino v0.15.1-0.20190807100446-27fcf2ff54e1 h1:LhmH6VpPWkQMVA6XiKt0uFuW0ycUHgAYpB9lnzA0kOw=
 github.com/tendermint/go-amino v0.15.1-0.20190807100446-27fcf2ff54e1/go.mod h1:08dbbE8fAQMUlUYpXjV3v6CvqPn13mfnB+whRYV796c=
+github.com/tendermint/go-amino v0.15.1-0.20190903165443-3ac3499e7042 h1:xDktyjoNulFL/la3dko6abkHCg51JTWHyN01vLWL81Y=
+github.com/tendermint/go-amino v0.15.1-0.20190903165443-3ac3499e7042/go.mod h1:08dbbE8fAQMUlUYpXjV3v6CvqPn13mfnB+whRYV796c=
 github.com/tendermint/iavl v0.12.4 h1:hd1woxUGISKkfUWBA4mmmTwOua6PQZTJM/F0FDrmMV8=
 github.com/tendermint/iavl v0.12.4/go.mod h1:8LHakzt8/0G3/I8FUU0ReNx98S/EP6eyPJkAUvEXT/o=
 github.com/tendermint/iavl v0.12.5-0.20190807103634-801ba37a56ab h1:ocu1/ZGXThkbEFs0nZkTBVurg+q3+9sxrisByhbkhLI=
