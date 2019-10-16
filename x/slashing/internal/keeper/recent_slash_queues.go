@@ -37,7 +37,8 @@ func (k Keeper) InsertLivenessQueue(ctx sdk.Context, slashEvent types.SlashEvent
 // IterateDoubleSignQueue iterates over the slash events in the recent double signs queue
 // and performs a callback function
 func (k Keeper) IterateDoubleSignQueue(ctx sdk.Context, cb func(slashEvent types.SlashEvent) (stop bool)) {
-	iterator := k.DoubleSignQueueIterator(ctx)
+	dsStore := k.DoubleSignQueueStore(ctx)
+	iterator := dsStore.Iterator(nil, nil)
 
 	defer iterator.Close()
 	for ; iterator.Valid(); iterator.Next() {
@@ -53,7 +54,8 @@ func (k Keeper) IterateDoubleSignQueue(ctx sdk.Context, cb func(slashEvent types
 // IterateLivenessQueue iterates over the slash events in the recent liveness faults queue
 // and performs a callback function
 func (k Keeper) IterateLivenessQueue(ctx sdk.Context, cb func(slashEvent types.SlashEvent) (stop bool)) {
-	iterator := k.LivenessQueueIterator(ctx)
+	liveStore := k.LivenessQueueStore(ctx)
+	iterator := liveStore.Iterator(nil, nil)
 
 	defer iterator.Close()
 	for ; iterator.Valid(); iterator.Next() {
@@ -66,14 +68,22 @@ func (k Keeper) IterateLivenessQueue(ctx sdk.Context, cb func(slashEvent types.S
 	}
 }
 
-// ActiveProposalQueueIterator returns an sdk.Iterator for all the proposals in the Active Queue that expire by endTime
-func (k Keeper) DoubleSignQueueIterator(ctx sdk.Context) sdk.Iterator {
+// Deletes all the recent double sign slash events whose expiry time is older than current block time
+func (k Keeper) PruneExpiredDoubleSignQueue(ctx sdk.Context) {
 	dsStore := k.DoubleSignQueueStore(ctx)
-	return dsStore.Iterator(nil, nil)
+	iterator := dsStore.Iterator(nil, sdk.PrefixEndBytes(sdk.FormatTimeBytes(ctx.BlockTime())))
+	defer iterator.Close()
+	for ; iterator.Valid(); iterator.Next() {
+		dsStore.Delete(iterator.Key())
+	}
 }
 
-// InactiveProposalQueueIterator returns an sdk.Iterator for all the proposals in the Inactive Queue that expire by endTime
-func (k Keeper) LivenessQueueIterator(ctx sdk.Context) sdk.Iterator {
+// Deletes all the recent liveness slash events whose expiry time is older than current block time
+func (k Keeper) PruneExpiredLivenessQueue(ctx sdk.Context) {
 	liveStore := k.LivenessQueueStore(ctx)
-	return liveStore.Iterator(nil, nil)
+	iterator := liveStore.Iterator(nil, sdk.PrefixEndBytes(sdk.FormatTimeBytes(ctx.BlockTime())))
+	defer iterator.Close()
+	for ; iterator.Valid(); iterator.Next() {
+		liveStore.Delete(iterator.Key())
+	}
 }

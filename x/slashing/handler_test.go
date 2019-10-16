@@ -207,7 +207,7 @@ func TestHandleAbsentValidator(t *testing.T) {
 	validator, _ = sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(val))
 	require.Equal(t, sdk.Unbonding, validator.GetStatus())
 
-	slashAmt := amt.ToDec().Mul(keeper.SlashFractionDowntime(ctx)).RoundInt64()
+	slashAmt := amt.ToDec().Mul(keeper.SlashFractionDowntime(ctx).Mul(sdk.NewDec(power).QuoInt(sk.GetLastTotalPower(ctx)))).RoundInt64()
 
 	// validator should have been slashed
 	require.Equal(t, amt.Int64()-slashAmt, validator.GetTokens().Int64())

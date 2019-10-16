@@ -88,7 +88,7 @@ func (k Keeper) HandleDoubleSign(ctx sdk.Context, addr crypto.Address, infractio
 		return false
 	})
 	// square the sum of the roots
-	squareOfSumOfRoots = squareOfSumOfRoots
+	squareOfSumOfRoots = squareOfSumOfRoots.Mul(squareOfSumOfRoots)
 	// get the percentage slash penalty fraction by multiplying by constant scalar from param store
 	fraction := k.SlashFractionDoubleSign(ctx).Mul(squareOfSumOfRoots)
 
@@ -235,7 +235,7 @@ func (k Keeper) HandleValidatorSignature(ctx sdk.Context, addr crypto.Address, p
 				return false
 			})
 			// square the sum of the roots
-			squareOfSumOfRoots = squareOfSumOfRoots
+			squareOfSumOfRoots = squareOfSumOfRoots.Mul(squareOfSumOfRoots)
 			// get the percentage slash penalty fraction by multiplying by constant scalar from param store
 			fraction := k.SlashFractionDoubleSign(ctx).Mul(squareOfSumOfRoots)
 

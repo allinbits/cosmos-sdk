@@ -40,7 +40,7 @@ func TestHandleDoubleSign(t *testing.T) {
 	oldTokens := sk.Validator(ctx, operatorAddr).GetTokens()
 
 	// double sign less than max age
-	keeper.HandleDoubleSign(ctx, val.Address(), 0, time.Unix(0, 0), power)
+	keeper.HandleDoubleSign(ctx, val.Address(), 0, time.Unix(0, 0), power, power*100)
 
 	// should be jailed
 	require.True(t, sk.Validator(ctx, operatorAddr).IsJailed())
@@ -50,7 +50,7 @@ func TestHandleDoubleSign(t *testing.T) {
 	require.True(t, newTokens.LT(oldTokens))
 
 	// New evidence
-	keeper.HandleDoubleSign(ctx, val.Address(), 0, time.Unix(0, 0), power)
+	keeper.HandleDoubleSign(ctx, val.Address(), 0, time.Unix(0, 0), power, power*100)
 
 	// tokens should be the same (capped slash)
 	require.True(t, sk.Validator(ctx, operatorAddr).GetTokens().Equal(newTokens))
@@ -101,7 +101,7 @@ func TestPastMaxEvidenceAge(t *testing.T) {
 	oldPower := sk.Validator(ctx, operatorAddr).GetConsensusPower()
 
 	// double sign past max age
-	keeper.HandleDoubleSign(ctx, val.Address(), 0, time.Unix(0, 0), power)
+	keeper.HandleDoubleSign(ctx, val.Address(), 0, time.Unix(0, 0), power, power*100)
 
 	// should still be bonded
 	require.True(t, sk.Validator(ctx, operatorAddr).IsBonded())

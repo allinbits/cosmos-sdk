@@ -39,7 +39,7 @@ func (i SlashEvent) String() string {
 	Address:               %s
 	Power:                 %d
 	Infraction Height:     %d
-	Percent Power:         &d
+	Percent Power:         %d
 	Slashed So Far:        %d
 	End Time:              %s`,
 		i.Address, i.Power, i.InfractionHeight, i.PercentPower, i.SlashedSoFar, i.EndTime)
