@@ -76,19 +76,19 @@ func (k Keeper) HandleDoubleSign(ctx sdk.Context, addr crypto.Address, infractio
 		validator.GetConsAddr(),
 		power,
 		distributionHeight,
-		sdk.NewDec(power).QuoInt64(totalPower),
+		sdk.NewDec(power).QuoInt64(totalPower).RoughSqrt(),
 		sdk.ZeroDec(),
 		timestamp.Add(k.sk.UnbondingTime(ctx)),
 	))
 
 	// iterate over all recent slashes to get the sum of the roots of all the powers
-	squareOfSumOfRoots := sdk.ZeroDec()
+	sumOfRoots := sdk.ZeroDec()
 	k.IterateDoubleSignQueue(ctx, func(slashEvent types.SlashEvent) bool {
-		squareOfSumOfRoots = squareOfSumOfRoots.Add(slashEvent.PercentPower.RoughSqrt())
+		sumOfRoots = sumOfRoots.Add(slashEvent.SqrtPercentPower)
 		return false
 	})
 	// square the sum of the roots
-	squareOfSumOfRoots = squareOfSumOfRoots.Mul(squareOfSumOfRoots)
+	squareOfSumOfRoots := sumOfRoots.Mul(sumOfRoots)
 	// get the percentage slash penalty fraction by multiplying by constant scalar from param store
 	fraction := k.SlashFractionDoubleSign(ctx).Mul(squareOfSumOfRoots)
 
@@ -223,19 +223,19 @@ func (k Keeper) HandleValidatorSignature(ctx sdk.Context, addr crypto.Address, p
 				validator.GetConsAddr(),
 				power,
 				distributionHeight,
-				sdk.NewDec(power).QuoInt(k.sk.GetLastTotalPower(ctx)),
+				sdk.NewDec(power).QuoInt(k.sk.GetLastTotalPower(ctx)).RoughSqrt(),
 				sdk.ZeroDec(),
 				ctx.BlockHeader().Time.Add(k.DowntimeJailDuration(ctx)),
 			))
 
 			// iterate over all recent slashes to get the sum of the roots of all the powers
-			squareOfSumOfRoots := sdk.ZeroDec()
+			sumOfRoots := sdk.ZeroDec()
 			k.IterateLivenessQueue(ctx, func(slashEvent types.SlashEvent) bool {
-				squareOfSumOfRoots = squareOfSumOfRoots.Add(slashEvent.PercentPower.RoughSqrt())
+				sumOfRoots = sumOfRoots.Add(slashEvent.SqrtPercentPower)
 				return false
 			})
 			// square the sum of the roots
-			squareOfSumOfRoots = squareOfSumOfRoots.Mul(squareOfSumOfRoots)
+			squareOfSumOfRoots := sumOfRoots.Mul(sumOfRoots)
 			// get the percentage slash penalty fraction by multiplying by constant scalar from param store
 			fraction := k.SlashFractionDowntime(ctx).Mul(squareOfSumOfRoots)
 

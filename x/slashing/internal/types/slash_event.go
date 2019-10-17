@@ -12,7 +12,7 @@ type SlashEvent struct {
 	Address          sdk.ConsAddress `json:"address" yaml:"address"` // validator's cons address
 	Power            int64           `json:"power" yaml:"power"`
 	InfractionHeight int64           `json:"infraction_height" yaml:"infraction_height"`
-	PercentPower     sdk.Dec         `json:"voting_percent" yaml:"voting_percent"`
+	SqrtPercentPower sdk.Dec         `json:"sqrt_voting_percent" yaml:"sqrt_voting_percent"`
 	SlashedSoFar     sdk.Dec         `json:"slashed_so_far" yaml:"slashed_so_far"`
 	EndTime          time.Time       `json:"end_time" yaml:"end_time"` // time when SlashEvent gets pruned
 }
@@ -20,14 +20,14 @@ type SlashEvent struct {
 // NewValidatorSigningInfo creates a new ValidatorSigningInfo instance
 func NewSlashEvent(
 	consAddress sdk.ConsAddress, power int64, infractionHeight int64,
-	percentPower sdk.Dec, slashedSoFar sdk.Dec, endTime time.Time,
+	sqrtPercentPower sdk.Dec, slashedSoFar sdk.Dec, endTime time.Time,
 ) SlashEvent {
 
 	return SlashEvent{
 		Address:          consAddress,
 		Power:            power,
 		InfractionHeight: infractionHeight,
-		PercentPower:     percentPower,
+		SqrtPercentPower: sqrtPercentPower,
 		SlashedSoFar:     slashedSoFar,
 		EndTime:          endTime,
 	}
@@ -39,10 +39,10 @@ func (i SlashEvent) String() string {
 	Address:               %s
 	Power:                 %d
 	Infraction Height:     %d
-	Percent Power:         %d
+	Sqrt Percent Power:    %d
 	Slashed So Far:        %d
 	End Time:              %s`,
-		i.Address, i.Power, i.InfractionHeight, i.PercentPower, i.SlashedSoFar, i.EndTime)
+		i.Address, i.Power, i.InfractionHeight, i.SqrtPercentPower, i.SlashedSoFar, i.EndTime)
 }
 
 func (i SlashEvent) StoreKey() []byte {
