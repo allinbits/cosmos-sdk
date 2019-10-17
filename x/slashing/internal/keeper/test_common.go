@@ -34,11 +34,13 @@ var (
 		newPubKey("0B485CFC0EECC619440448436F8FC9DF40566F2369E72400281454CB552AFB50"),
 		newPubKey("0B485CFC0EECC619440448436F8FC9DF40566F2369E72400281454CB552AFB51"),
 		newPubKey("0B485CFC0EECC619440448436F8FC9DF40566F2369E72400281454CB552AFB52"),
+		newPubKey("0B485CFC0EECC619440448436F8FC9DF40566F2369E72400281454CB552AFB53"),
 	}
 	Addrs = []sdk.ValAddress{
 		sdk.ValAddress(Pks[0].Address()),
 		sdk.ValAddress(Pks[1].Address()),
 		sdk.ValAddress(Pks[2].Address()),
+		sdk.ValAddress(Pks[3].Address()),
 	}
 	InitTokens = sdk.TokensFromConsensusPower(200)
 	initCoins  = sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, InitTokens))

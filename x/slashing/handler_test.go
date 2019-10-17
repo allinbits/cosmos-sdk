@@ -200,14 +200,14 @@ func TestHandleAbsentValidator(t *testing.T) {
 	// counter now reset to zero
 	require.Equal(t, int64(0), info.MissedBlocksCounter)
 
+	slashAmt := amt.ToDec().Mul(keeper.SlashFractionDowntime(ctx).Mul(sdk.NewDec(power).QuoInt(sk.GetLastTotalPower(ctx)))).RoundInt64()
+
 	// end block
 	staking.EndBlocker(ctx, sk)
 
 	// validator should have been jailed
 	validator, _ = sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(val))
 	require.Equal(t, sdk.Unbonding, validator.GetStatus())
-
-	slashAmt := amt.ToDec().Mul(keeper.SlashFractionDowntime(ctx).Mul(sdk.NewDec(power).QuoInt(sk.GetLastTotalPower(ctx)))).RoundInt64()
 
 	// validator should have been slashed
 	require.Equal(t, amt.Int64()-slashAmt, validator.GetTokens().Int64())
@@ -284,4 +284,140 @@ func TestHandleAbsentValidator(t *testing.T) {
 
 	validator, _ = sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(val))
 	require.Equal(t, sdk.Unbonding, validator.GetStatus())
+}
+
+func TestProportionalSlashingLiveness(t *testing.T) {
+
+	// initial setup
+	ctx, _, sk, _, keeper := slashingkeeper.CreateTestInput(t, slashingkeeper.TestParams())
+	power := int64(10)
+	addrs, vals := slashingkeeper.Addrs, slashingkeeper.Pks
+	amt := sdk.TokensFromConsensusPower(power).ToDec()
+	sh := staking.NewHandler(sk)
+	// Give the first two validators 5% of voting power each.
+	got := sh(ctx, slashingkeeper.NewTestMsgCreateValidator(addrs[0], vals[0], amt.RoundInt()))
+	require.True(t, got.IsOK())
+	got = sh(ctx, slashingkeeper.NewTestMsgCreateValidator(addrs[1], vals[1], amt.RoundInt()))
+	require.True(t, got.IsOK())
+	got = sh(ctx, slashingkeeper.NewTestMsgCreateValidator(addrs[2], vals[2], amt.RoundInt().MulRaw(18)))
+	require.True(t, got.IsOK(), got)
+	staking.EndBlocker(ctx, sk)
+
+	height := int64(0)
+
+	// 1000 first blocks OK
+	for ; height < keeper.SignedBlocksWindow(ctx); height++ {
+		ctx = ctx.WithBlockHeight(height)
+		keeper.HandleValidatorSignature(ctx, vals[0].Address(), power, true)
+		keeper.HandleValidatorSignature(ctx, vals[1].Address(), power, true)
+	}
+
+	// 500 blocks missed
+	for ; height < keeper.SignedBlocksWindow(ctx)+(keeper.SignedBlocksWindow(ctx)-keeper.MinSignedPerWindow(ctx)); height++ {
+		ctx = ctx.WithBlockHeight(height)
+		keeper.HandleValidatorSignature(ctx, vals[0].Address(), power, false)
+		keeper.HandleValidatorSignature(ctx, vals[1].Address(), power, false)
+	}
+
+	// 501st block missed
+	ctx = ctx.WithBlockHeight(height)
+	keeper.HandleValidatorSignature(ctx, vals[0].Address(), power, false)
+	keeper.HandleValidatorSignature(ctx, vals[1].Address(), power, false)
+
+	// Each validator should be slashed SlashFractionDowntime * 0.2 ((sqrt(0.05) + sqrt(0.05))^2)
+
+	slashAmt := amt.Mul(keeper.SlashFractionDowntime(ctx).Mul(sdk.NewDecFromIntWithPrec(sdk.NewInt(2), 1)))
+
+	// end block
+	staking.EndBlocker(ctx, sk)
+
+	// validator should have been jailed
+	validator0, _ := sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(vals[0]))
+	validator1, _ := sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(vals[1]))
+
+	// validator should have been slashed
+	require.Equal(t, amt.Sub(slashAmt).RoundInt64(), validator0.GetTokens().Int64())
+	require.Equal(t, amt.Sub(slashAmt).RoundInt64(), validator1.GetTokens().Int64())
+}
+
+// Test proportional slashing for multiple validators double signing
+func TestProportionalSlashingDoubleSign(t *testing.T) {
+
+	// initial setup
+	ctx, _, sk, _, keeper := slashingkeeper.CreateTestInput(t, slashingkeeper.TestParams())
+	power := int64(100)
+	addrs, vals := slashingkeeper.Addrs, slashingkeeper.Pks
+	amt := sdk.TokensFromConsensusPower(power).ToDec()
+	sh := staking.NewHandler(sk)
+	got := sh(ctx, slashingkeeper.NewTestMsgCreateValidator(addrs[0], vals[0], amt.RoundInt()))
+	require.True(t, got.IsOK())
+	got = sh(ctx, slashingkeeper.NewTestMsgCreateValidator(addrs[1], vals[1], amt.RoundInt()))
+	require.True(t, got.IsOK())
+	got = sh(ctx, slashingkeeper.NewTestMsgCreateValidator(addrs[2], vals[2], amt.RoundInt()))
+	require.True(t, got.IsOK())
+	got = sh(ctx, slashingkeeper.NewTestMsgCreateValidator(addrs[3], vals[3], amt.RoundInt()))
+	require.True(t, got.IsOK())
+	staking.EndBlocker(ctx, sk)
+
+	height := int64(0)
+
+	// Val 0 double signs
+	keeper.HandleDoubleSign(ctx, addrs[0].Bytes(), height, ctx.BlockTime(), power, sk.GetLastTotalPower(ctx).Int64())
+	slashAmt := amt.Mul(keeper.SlashFractionDoubleSign(ctx).Mul(sdk.NewDec(power).QuoInt(sk.GetLastTotalPower(ctx))))
+
+	// end block
+	staking.EndBlocker(ctx, sk)
+
+	// validator should have been slashed by slashAmt
+	validator0, _ := sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(vals[0]))
+
+	require.Equal(t, amt.Sub(slashAmt).RoundInt(), validator0.GetTokens())
+
+	// forward block time by 5 seconds
+	ctx = ctx.WithBlockTime(ctx.BlockHeader().Time.Add(5 * time.Second))
+	ctx = ctx.WithBlockHeight(ctx.BlockHeight() + 2)
+
+	// Begin next block (prune recent slashes if needed)
+	BeginBlocker(ctx, abci.RequestBeginBlock{}, keeper)
+
+	// Val 1 double signs
+	keeper.HandleDoubleSign(ctx, addrs[1].Bytes(), ctx.BlockHeight(), ctx.BlockTime(), power, sk.GetLastTotalPower(ctx).Int64())
+	slashAmt2 := amt.Mul(keeper.SlashFractionDoubleSign(ctx).Mul(sdk.NewDec(power).QuoInt(sk.GetLastTotalPower(ctx))))
+
+	// end block
+	staking.EndBlocker(ctx, sk)
+
+	// validator should have been slashed
+	validator0, _ = sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(vals[0]))
+	validator1, _ := sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(vals[1]))
+	// Check that the tokens of both validators are less than just slashAmt + slashAmt2
+	require.Less(t, validator0.GetTokens().Int64(), amt.Sub(slashAmt).Sub(slashAmt2).RoundInt64())
+	require.Less(t, validator1.GetTokens().Int64(), amt.Sub(slashAmt).Sub(slashAmt2).RoundInt64())
+
+	val0Tokens := validator0.GetTokens()
+	val1Tokens := validator1.GetTokens()
+
+	// forward block time beyond unbonding period
+	ctx = ctx.WithBlockTime(ctx.BlockHeader().Time.Add(sk.UnbondingTime((ctx))))
+	ctx = ctx.WithBlockHeight(ctx.BlockHeight() + 200)
+
+	// Begin next block (prune recent slashes if needed)
+	BeginBlocker(ctx, abci.RequestBeginBlock{}, keeper)
+
+	// Val 2 double signs
+	keeper.HandleDoubleSign(ctx, addrs[2].Bytes(), ctx.BlockHeight(), ctx.BlockTime(), power, sk.GetLastTotalPower(ctx).Int64())
+	slashAmt3 := amt.Mul(keeper.SlashFractionDoubleSign(ctx).Mul(sdk.NewDec(power).QuoInt(sk.GetLastTotalPower(ctx))))
+
+	// end block
+	staking.EndBlocker(ctx, sk)
+
+	// validator should have been slashed
+	validator0, _ = sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(vals[0]))
+	validator1, _ = sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(vals[1]))
+	validator2, _ := sk.GetValidatorByConsAddr(ctx, sdk.GetConsAddress(vals[2]))
+	// Check that the val2 tokens are only slashed by slashAmt3
+	require.Equal(t, validator2.GetTokens(), amt.Sub(slashAmt3).RoundInt())
+	// Check that val0 and val1 have not been slashed
+	require.Equal(t, validator0.GetTokens(), val0Tokens)
+	require.Equal(t, validator1.GetTokens(), val1Tokens)
 }

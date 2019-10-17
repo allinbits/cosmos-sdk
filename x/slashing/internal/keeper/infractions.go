@@ -237,7 +237,7 @@ func (k Keeper) HandleValidatorSignature(ctx sdk.Context, addr crypto.Address, p
 			// square the sum of the roots
 			squareOfSumOfRoots = squareOfSumOfRoots.Mul(squareOfSumOfRoots)
 			// get the percentage slash penalty fraction by multiplying by constant scalar from param store
-			fraction := k.SlashFractionDoubleSign(ctx).Mul(squareOfSumOfRoots)
+			fraction := k.SlashFractionDowntime(ctx).Mul(squareOfSumOfRoots)
 
 			k.IterateLivenessQueue(ctx, func(slashEvent types.SlashEvent) bool {
 				// If a validator needs to be further slashed
@@ -250,7 +250,7 @@ func (k Keeper) HandleValidatorSignature(ctx sdk.Context, addr crypto.Address, p
 
 					// update slash so far amount in slash event
 					slashEvent.SlashedSoFar = fraction
-					k.InsertDoubleSignQueue(ctx, slashEvent)
+					k.InsertLivenessQueue(ctx, slashEvent)
 				}
 
 				return false
@@ -265,7 +265,6 @@ func (k Keeper) HandleValidatorSignature(ctx sdk.Context, addr crypto.Address, p
 					sdk.NewAttribute(types.AttributeKeyJailed, consAddr.String()),
 				),
 			)
-			k.sk.Slash(ctx, consAddr, distributionHeight, power, k.SlashFractionDowntime(ctx))
 			k.sk.Jail(ctx, consAddr)
 
 			signInfo.JailedUntil = ctx.BlockHeader().Time.Add(k.DowntimeJailDuration(ctx))
