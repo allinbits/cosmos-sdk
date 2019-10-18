@@ -76,7 +76,7 @@ func (k Keeper) HandleDoubleSign(ctx sdk.Context, addr crypto.Address, infractio
 		validator.GetConsAddr(),
 		power,
 		distributionHeight,
-		sdk.NewDec(power).QuoInt64(totalPower).RoughSqrt(),
+		sdk.NewDec(power).QuoInt64(totalPower).ApproxSqrt(),
 		sdk.ZeroDec(),
 		timestamp.Add(k.sk.UnbondingTime(ctx)),
 	))
@@ -223,7 +223,7 @@ func (k Keeper) HandleValidatorSignature(ctx sdk.Context, addr crypto.Address, p
 				validator.GetConsAddr(),
 				power,
 				distributionHeight,
-				sdk.NewDec(power).QuoInt(k.sk.GetLastTotalPower(ctx)).RoughSqrt(),
+				sdk.NewDec(power).QuoInt(k.sk.GetLastTotalPower(ctx)).ApproxSqrt(),
 				sdk.ZeroDec(),
 				ctx.BlockHeader().Time.Add(k.DowntimeJailDuration(ctx)),
 			))
