@@ -425,11 +425,16 @@ func TestDecCeil(t *testing.T) {
 	}
 }
 
+<<<<<<< HEAD
 func TestDecSqrt(t *testing.T) {
+=======
+func TestApproxSqrt(t *testing.T) {
+>>>>>>> master
 	testCases := []struct {
 		input    Dec
 		expected Dec
 	}{
+<<<<<<< HEAD
 		{OneDec(), OneDec()},                                   // 1.0 => 1.0
 		{NewDecWithPrec(25, 2), NewDecWithPrec(5, 1)},          // 0.25 => 0.5
 		{NewDecWithPrec(4, 2), NewDecWithPrec(2, 1)},           // 0.09 => 0.3
@@ -439,6 +444,18 @@ func TestDecSqrt(t *testing.T) {
 
 	for i, tc := range testCases {
 		res := tc.input.RoughSqrt()
+=======
+		{OneDec(), OneDec()},                                                // 1.0 => 1.0
+		{NewDecWithPrec(25, 2), NewDecWithPrec(5, 1)},                       // 0.25 => 0.5
+		{NewDecWithPrec(4, 2), NewDecWithPrec(2, 1)},                        // 0.09 => 0.3
+		{NewDecFromInt(NewInt(9)), NewDecFromInt(NewInt(3))},                // 9 => 3
+		{NewDecFromInt(NewInt(-9)), NewDecFromInt(NewInt(-3))},              // -9 => -3
+		{NewDecFromInt(NewInt(2)), NewDecWithPrec(1414213562373095049, 18)}, // 2 => 1.414213562373095049
+	}
+
+	for i, tc := range testCases {
+		res := tc.input.ApproxSqrt()
+>>>>>>> master
 		require.Equal(t, tc.expected, res, "unexpected result for test case %d, input: %v", i, tc.input)
 	}
 }
