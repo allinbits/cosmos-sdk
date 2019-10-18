@@ -321,10 +321,10 @@ func (d Dec) QuoInt64(i int64) Dec {
 // ApproxSqrt returns an approximate sqrt estimation using Newton's method to compute square
 // roots x =√d for d > 0. The algorithm starts with some guess and computes the sequence of improved
 // guesses until an answer converges to an approximate answer.
-// Returns -(sqrt(abs(d)) if input is negative
+// Returns -(sqrt(abs(d)) for < 0 (negative).  For example (-9).ApproxSqrt() = -3
 func (d Dec) ApproxSqrt() Dec {
 	if d.IsNegative() {
-		return d.MulInt64(-1).RoughSqrt().MulInt64(-1)
+		return d.MulInt64(-1).ApproxSqrt().MulInt64(-1)
 	}
 
 	if d.IsZero() {

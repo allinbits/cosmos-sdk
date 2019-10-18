@@ -430,15 +430,16 @@ func TestDecSqrt(t *testing.T) {
 		input    Dec
 		expected Dec
 	}{
-		{OneDec(), OneDec()},                                   // 1.0 => 1.0
-		{NewDecWithPrec(25, 2), NewDecWithPrec(5, 1)},          // 0.25 => 0.5
-		{NewDecWithPrec(4, 2), NewDecWithPrec(2, 1)},           // 0.09 => 0.3
-		{NewDecFromInt(NewInt(9)), NewDecFromInt(NewInt(3))},   // 9 => 3
-		{NewDecFromInt(NewInt(-9)), NewDecFromInt(NewInt(-3))}, // -9 => -3
+		{OneDec(), OneDec()},                                                               // 1.0 => 1.0
+		{NewDecWithPrec(25, 2), NewDecWithPrec(5, 1)},                                      // 0.25 => 0.5
+		{NewDecWithPrec(4, 2), NewDecWithPrec(2, 1)},                                       // 0.09 => 0.3
+		{NewDecFromInt(NewInt(9)), NewDecFromInt(NewInt(3))},                               // 9 => 3
+		{NewDecFromInt(NewInt(-9)), NewDecFromInt(NewInt(-3))},                             // -9 => -3
+		{NewDecFromInt(NewInt(2)), NewDecFromIntWithPrec(NewInt(1414213562373095049), 18)}, // 2 => sqrt(2) rounded to 18 decimal places
 	}
 
 	for i, tc := range testCases {
-		res := tc.input.RoughSqrt()
+		res := tc.input.ApproxSqrt()
 		require.Equal(t, tc.expected, res, "unexpected result for test case %d, input: %v", i, tc.input)
 	}
 }
