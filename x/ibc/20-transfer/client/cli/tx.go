@@ -39,10 +39,10 @@ func GetTxCmd(cdc *codec.Codec) *cobra.Command {
 		Use:   "transfer",
 		Short: "IBC fungible token transfer transaction subcommands",
 	}
-	txCmd.AddCommand(
+	txCmd.AddCommand(client.PostCommands(
 		GetTransferTxCmd(cdc),
 		GetMsgRecvPacketCmd(cdc),
-	)
+	)...)
 
 	return txCmd
 }
