@@ -24,8 +24,8 @@ require (
 	github.com/tendermint/btcd v0.1.1
 	github.com/tendermint/crypto v0.0.0-20191022145703-50d29ede1e15
 	github.com/tendermint/go-amino v0.15.1
-	github.com/tendermint/iavl v0.12.4
-	github.com/tendermint/tendermint v0.32.9
+	github.com/tendermint/iavl v0.12.5-0.20191214042924-5fd5f52480bb
+	github.com/tendermint/tendermint v0.32.8
 	github.com/tendermint/tm-db v0.2.0
 	gopkg.in/yaml.v2 v2.2.7
 )

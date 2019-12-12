@@ -53,7 +53,7 @@ func getBlock(cliCtx context.CLIContext, height *int64) ([]byte, error) {
 			return nil, err
 		}
 
-		err = tmliteProxy.ValidateBlockMeta(res.BlockMeta, check)
+		err = tmliteProxy.ValidateHeader(&res.Block.Header, check)
 		if err != nil {
 			return nil, err
 		}
