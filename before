@@ -1,0 +1,16 @@
+GoLevelDB Stats
+Compactions
+ Level |   Tables   |    Size(MB)   |    Time(sec)  |    Read(MB)   |   Write(MB)
+-------+------------+---------------+---------------+---------------+---------------
+   0   |          1 |       2.10098 |       6.28932 |       0.00000 |     331.41613
+   1   |          9 |      17.64877 |      20.30582 |    1651.18782 |    1339.52144
+-------+------------+---------------+---------------+---------------+---------------
+ Total |         10 |      19.74975 |      26.59514 |    1651.18782 |    1670.93757
+
+GoLevelDB cached block size 8385566
+goos: linux
+goarch: amd64
+pkg: github.com/cosmos/cosmos-sdk/simapp
+BenchmarkFullAppSimulation-4           1        2570537915826 ns/op     315690948576 B/op       6403271409 allocs/op
+PASS
+ok      github.com/cosmos/cosmos-sdk/simapp     2571.202s

@@ -8,8 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 
+	cmn "github.com/cosmos/cosmos-sdk/common"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )

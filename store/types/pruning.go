@@ -31,5 +31,5 @@ var (
 	// PruneNothing means all historic states will be saved, nothing will be deleted
 	PruneNothing = NewPruningOptions(0, 1)
 	// PruneSyncable means only those states not needed for state syncing will be deleted (keeps last 100 + every 10000th)
-	PruneSyncable = NewPruningOptions(100, 10000)
+	PruneSyncable = NewPruningOptions(10000, 10000)
 )
