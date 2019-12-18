@@ -3,6 +3,8 @@ package iavl
 import (
 	"fmt"
 	"io"
+	"os"
+	"strconv"
 	"sync"
 
 	"github.com/cosmos/cosmos-sdk/store/cachekv"
@@ -11,7 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/store/types"
 
 	sdkcmn "github.com/cosmos/cosmos-sdk/common"
-	"github.com/pkg/errors"
+	//"github.com/pkg/errors"
 	"github.com/tendermint/iavl"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -51,7 +53,9 @@ type Store struct {
 // store's version (id) from the provided DB. An error is returned if the version
 // fails to load.
 func LoadStore(db dbm.DB, id types.CommitID, pruning types.PruningOptions, lazyLoading bool) (types.CommitKVStore, error) {
-	pruning = types.PruneSyncable
+	recent, _ := strconv.ParseInt(os.Getenv("KEEP_RECENT"), 10, 64)
+	every, _ := strconv.ParseInt(os.Getenv("KEEP_EVERY"), 10, 64)
+	pruning = types.NewPruningOptions(recent, every)
 	var iavlOpts *iavl.Options
 	if pruning.KeepEvery() == 0 && pruning.KeepRecent() == 0 {
 		iavlOpts = iavl.DefaultOptions()
@@ -117,18 +121,6 @@ func (st *Store) Commit() types.CommitID {
 	if err != nil {
 		// TODO: Do we want to extend Commit to allow returning errors?
 		panic(err)
-	}
-
-	// Release an old version of history, if not a sync waypoint.
-	previous := version - 1
-	if st.numRecent < previous {
-		toRelease := previous - st.numRecent
-		if st.storeEvery == 0 || toRelease%st.storeEvery != 0 {
-			err := st.tree.DeleteVersion(toRelease)
-			if errCause := errors.Cause(err); errCause != nil && errCause != iavl.ErrVersionDoesNotExist {
-				panic(err)
-			}
-		}
 	}
 
 	return types.CommitID{
