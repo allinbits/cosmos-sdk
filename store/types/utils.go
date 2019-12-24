@@ -6,16 +6,6 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// Iterator over all the keys with a certain prefix in ascending order
-func KVStorePrefixIterator(kvs KVStore, prefix []byte) Iterator {
-	return kvs.Iterator(prefix, PrefixEndBytes(prefix))
-}
-
-// Iterator over all the keys with a certain prefix in descending order.
-func KVStoreReversePrefixIterator(kvs KVStore, prefix []byte) Iterator {
-	return kvs.ReverseIterator(prefix, PrefixEndBytes(prefix))
-}
-
 // DiffKVStores compares two KVstores and returns all the key/value pairs
 // that differ from one another. It also skips value comparison for a set of provided prefixes
 func DiffKVStores(a KVStore, b KVStore, prefixesToSkip [][]byte) (kvAs, kvBs []cmn.KVPair) {

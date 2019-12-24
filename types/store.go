@@ -30,6 +30,18 @@ type (
 // simulation.
 type StoreDecoderRegistry map[string]func(cdc *codec.Codec, kvA, kvB cmn.KVPair) string
 
+// KVStorePrefixIteratorPaginated returns iterator over items in the selected page.
+// Items iterated and skipped in ascending order.
+func KVStorePrefixIteratorPaginated(kvs KVStore, prefix []byte, page, limit uint) Iterator {
+	return types.KVStorePrefixIteratorPaginated(kvs, prefix, page, limit)
+}
+
+// KVStoreReversePrefixIteratorPaginated returns iterator over items in the selected page.
+// Items iterated and skipped in descending order.
+func KVStoreReversePrefixIteratorPaginated(kvs KVStore, prefix []byte, page, limit uint) Iterator {
+	return types.KVStorePrefixIteratorPaginated(kvs, prefix, page, limit)
+}
+
 // Iterator over all the keys with a certain prefix in ascending order
 func KVStorePrefixIterator(kvs KVStore, prefix []byte) Iterator {
 	return types.KVStorePrefixIterator(kvs, prefix)
