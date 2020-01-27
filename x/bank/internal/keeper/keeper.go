@@ -370,6 +370,7 @@ var _ ViewKeeper = (*BaseViewKeeper)(nil)
 // ViewKeeper defines a module interface that facilitates read only access to
 // account balances.
 type ViewKeeper interface {
+	GetAllBalances(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
 	GetBalance(ctx sdk.Context, addr sdk.AccAddress, denom string) sdk.Coin
 
 	LockedCoins(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins
@@ -397,6 +398,22 @@ func NewBaseViewKeeper(cdc *codec.Codec, storeKey sdk.StoreKey, ak types.Account
 // Logger returns a module-specific logger.
 func (k BaseViewKeeper) Logger(ctx sdk.Context) log.Logger {
 	return ctx.Logger().With("module", fmt.Sprintf("x/%s", types.ModuleName))
+}
+
+// HasBalance returns whether or not an account has at least amt balance.
+func (k BaseViewKeeper) HasBalance(ctx sdk.Context, addr sdk.AccAddress, amt sdk.Coin) bool {
+	return k.GetBalance(ctx, addr, amt.Denom).IsGTE(amt)
+}
+
+// GetAllBalances returns all the account balances for the given account address.
+func (k BaseViewKeeper) GetAllBalances(ctx sdk.Context, addr sdk.AccAddress) sdk.Coins {
+	balances := sdk.NewCoins()
+	k.IterateAccountBalances(ctx, addr, func(balance sdk.Coin) bool {
+		balances = balances.Add(balance)
+		return false
+	})
+
+	return balances
 }
 
 // GetBalance returns the balance of a specific denomination for a given account
