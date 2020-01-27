@@ -4,6 +4,12 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
+// Querier path constants
+const (
+	QueryBalance     = "balance"
+	QueryAllBalances = "all_balances"
+)
+
 // QueryBalanceParams defines the params for querying an account balance.
 type QueryBalanceParams struct {
 	Address sdk.AccAddress
@@ -15,12 +21,12 @@ func NewQueryBalanceParams(addr sdk.AccAddress, denom string) QueryBalanceParams
 	return QueryBalanceParams{Address: addr, Denom: denom}
 }
 
-// QueryBalancesParams defines the params for querying all account balances
-type QueryBalancesParams struct {
+// QueryAllBalancesParams defines the params for querying all account balances
+type QueryAllBalancesParams struct {
 	Address sdk.AccAddress
 }
 
-// NewQueryBalancesParams creates a new instance of QueryBalanceParams.
-func NewQueryBalancesParams(addr sdk.AccAddress) QueryBalancesParams {
-	return QueryBalancesParams{Address: addr}
+// NewQueryAllBalancesParams creates a new instance of QueryAllBalancesParams.
+func NewQueryAllBalancesParams(addr sdk.AccAddress) QueryAllBalancesParams {
+	return QueryAllBalancesParams{Address: addr}
 }

@@ -9,20 +9,14 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/bank/internal/types"
 )
 
-// Querier path constants
-const (
-	QueryBalance     = "balance"
-	QueryAllBalances = "all_balances"
-)
-
 // NewQuerier returns a new sdk.Keeper instance.
 func NewQuerier(k Keeper) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) ([]byte, error) {
 		switch path[0] {
-		case QueryBalance:
+		case types.QueryBalance:
 			return queryBalance(ctx, req, k)
 
-		case QueryAllBalances:
+		case types.QueryAllBalances:
 			return queryAllBalance(ctx, req, k)
 
 		default:
@@ -49,17 +43,13 @@ func queryBalance(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, err
 }
 
 func queryAllBalance(ctx sdk.Context, req abci.RequestQuery, k Keeper) ([]byte, error) {
-	var params types.QueryBalancesParams
+	var params types.QueryAllBalancesParams
 
 	if err := types.ModuleCdc.UnmarshalJSON(req.Data, &params); err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONUnmarshal, err.Error())
 	}
 
-	balances := sdk.NewCoins()
-	k.IterateAccountBalances(ctx, params.Address, func(balance sdk.Coin) bool {
-		balances = balances.Add(balance)
-		return false
-	})
+	balances := k.GetAllBalances(ctx, params.Address)
 
 	bz, err := codec.MarshalJSONIndent(types.ModuleCdc, balances)
 	if err != nil {

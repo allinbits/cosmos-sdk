@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	QueryBalance       = keeper.QueryBalance
+	QueryBalance       = types.QueryBalance
+	QueryAllBalances   = types.QueryAllBalances
 	ModuleName         = types.ModuleName
 	QuerierRoute       = types.QuerierRoute
 	RouterKey          = types.RouterKey
@@ -45,7 +46,7 @@ var (
 	ValidateInputsOutputs       = types.ValidateInputsOutputs
 	ParamKeyTable               = types.ParamKeyTable
 	NewQueryBalanceParams       = types.NewQueryBalanceParams
-	NewQueryBalancesParams      = types.NewQueryBalancesParams
+	NewQueryAllBalancesParams   = types.NewQueryAllBalancesParams
 	ModuleCdc                   = types.ModuleCdc
 	ParamStoreKeySendEnabled    = types.ParamStoreKeySendEnabled
 	BalancesPrefix              = types.BalancesPrefix
@@ -53,18 +54,18 @@ var (
 )
 
 type (
-	Keeper              = keeper.Keeper
-	BaseKeeper          = keeper.BaseKeeper
-	SendKeeper          = keeper.SendKeeper
-	BaseSendKeeper      = keeper.BaseSendKeeper
-	ViewKeeper          = keeper.ViewKeeper
-	BaseViewKeeper      = keeper.BaseViewKeeper
-	GenesisState        = types.GenesisState
-	Balance             = types.Balance
-	MsgSend             = types.MsgSend
-	MsgMultiSend        = types.MsgMultiSend
-	Input               = types.Input
-	Output              = types.Output
-	QueryBalanceParams  = types.QueryBalanceParams
-	QueryBalancesParams = types.QueryBalancesParams
+	Keeper                 = keeper.Keeper
+	BaseKeeper             = keeper.BaseKeeper
+	SendKeeper             = keeper.SendKeeper
+	BaseSendKeeper         = keeper.BaseSendKeeper
+	ViewKeeper             = keeper.ViewKeeper
+	BaseViewKeeper         = keeper.BaseViewKeeper
+	GenesisState           = types.GenesisState
+	Balance                = types.Balance
+	MsgSend                = types.MsgSend
+	MsgMultiSend           = types.MsgMultiSend
+	Input                  = types.Input
+	Output                 = types.Output
+	QueryBalanceParams     = types.QueryBalanceParams
+	QueryAllBalancesParams = types.QueryAllBalancesParams
 )
