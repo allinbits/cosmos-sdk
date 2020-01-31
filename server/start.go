@@ -28,6 +28,7 @@ const (
 	FlagMinGasPrices       = "minimum-gas-prices"
 	FlagHaltHeight         = "halt-height"
 	FlagHaltTime           = "halt-time"
+	FlagSnapshotInterval   = "snapshot-interval"
 	FlagInterBlockCache    = "inter-block-cache"
 	FlagUnsafeSkipUpgrades = "unsafe-skip-upgrades"
 )
@@ -81,6 +82,7 @@ which accepts a path for the resulting pprof file.
 	cmd.Flags().IntSlice(FlagUnsafeSkipUpgrades, []int{}, "Skip a set of upgrade heights to continue the old binary")
 	cmd.Flags().Uint64(FlagHaltHeight, 0, "Block height at which to gracefully halt the chain and shutdown the node")
 	cmd.Flags().Uint64(FlagHaltTime, 0, "Minimum block time (in Unix seconds) at which to gracefully halt the chain and shutdown the node")
+	cmd.Flags().Uint64(FlagSnapshotInterval, 0, "Interval between snapshots, in blocks (0 disables snapshots)")
 	cmd.Flags().Bool(FlagInterBlockCache, true, "Enable inter-block caching")
 	cmd.Flags().String(flagCPUProfile, "", "Enable CPU profiling and write to the provided file")
 

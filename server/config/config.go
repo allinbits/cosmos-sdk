@@ -36,6 +36,9 @@ type BaseConfig struct {
 	InterBlockCache bool `mapstructure:"inter-block-cache"`
 
 	Pruning string `mapstructure:"pruning"`
+
+	// Snapshot interval, in blocks (0 disables snapshots)
+	SnapshotInterval uint64 `mapstructure:"snapshot-interval"`
 }
 
 // Config defines the server's top level configuration

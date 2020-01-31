@@ -262,6 +262,16 @@ func (app *BaseApp) Commit() (res abci.ResponseCommit) {
 		app.halt()
 	}
 
+	// Take asynchronous snapshot if appropriate
+	if app.snapshotInterval > 0 && header.Height%int64(app.snapshotInterval) == 0 {
+		go func() {
+			err := app.snapshot(commitID)
+			if err != nil {
+				app.logger.Error("Failed to take snapshot", "height", header.Height, "error", err.Error())
+			}
+		}()
+	}
+
 	return abci.ResponseCommit{
 		Data: commitID.Hash,
 	}

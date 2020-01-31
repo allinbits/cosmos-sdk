@@ -39,6 +39,9 @@ inter-block-cache = {{ .BaseConfig.InterBlockCache }}
 # nothing: all historic states will be saved, nothing will be deleted (i.e. archiving node)
 # everything: all saved states will be deleted, storing only the current state
 pruning = "{{ .BaseConfig.Pruning }}"
+
+# The block interval between snapshots.
+snapshot-interval = {{ .BaseConfig.SnapshotInterval }}
 `
 
 var configTemplate *template.Template

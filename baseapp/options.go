@@ -44,6 +44,11 @@ func SetInterBlockCache(cache sdk.MultiStorePersistentCache) func(*BaseApp) {
 	return func(app *BaseApp) { app.setInterBlockCache(cache) }
 }
 
+// SetSnapshotInterval returns a BaseApp option function that sets the snapshot interval.
+func SetSnapshotInterval(snapshotInterval uint64) func(*BaseApp) {
+	return func(bap *BaseApp) { bap.setSnapshotInterval(snapshotInterval) }
+}
+
 func (app *BaseApp) SetName(name string) {
 	if app.sealed {
 		panic("SetName() on sealed BaseApp")

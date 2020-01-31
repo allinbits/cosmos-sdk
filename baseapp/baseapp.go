@@ -104,6 +104,9 @@ type BaseApp struct { // nolint: maligned
 	// minimum block time (in Unix seconds) at which to halt the chain and gracefully shutdown
 	haltTime uint64
 
+	// interval between snapshots (in blocks)
+	snapshotInterval uint64
+
 	// application's version string
 	appVersion string
 }
@@ -352,6 +355,10 @@ func (app *BaseApp) setHaltTime(haltTime uint64) {
 
 func (app *BaseApp) setInterBlockCache(cache sdk.MultiStorePersistentCache) {
 	app.interBlockCache = cache
+}
+
+func (app *BaseApp) setSnapshotInterval(snapshotInterval uint64) {
+	app.snapshotInterval = snapshotInterval
 }
 
 // Router returns the router of the BaseApp.
@@ -683,4 +690,11 @@ func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*s
 		Log:    strings.TrimSpace(msgLogs.String()),
 		Events: events,
 	}, nil
+}
+
+// snapshot takes a state snapshot
+// FIXME This assumes that CommitID.Version corresponds to Header.Height
+func (app *BaseApp) snapshot(id store.CommitID) error {
+	app.logger.Info("Taking state snapshot", "height", id.Version)
+	return nil
 }
