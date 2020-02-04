@@ -320,8 +320,29 @@ func (rs *Store) CacheWrapWithTrace(_ io.Writer, _ types.TraceContext) types.Cac
 //----------------------------------------
 // +Snapshotter
 
+// Implements Snapshotter.
 func (rs *Store) Snapshot(commitID types.CommitID) error {
 	fmt.Println("rootmultistore snapshot!")
+	for name, store := range rs.stores {
+		fmt.Printf("Dumping %s\n", name)
+		switch s := store.(type) {
+		case *iavl.Store:
+			fmt.Println("IAVL")
+			iter := s.SnapshotIterator()
+			defer iter.Close()
+			for iter.Valid() {
+				iter.Next()
+				fmt.Printf("%x:%x\n", iter.Key(), iter.Value())
+			}
+			err := iter.Error()
+			if err != nil {
+				return err
+			}
+		default:
+			fmt.Println("Other")
+		}
+
+	}
 	return nil
 }
 

@@ -195,6 +195,19 @@ func (st *Store) ReverseIterator(start, end []byte) types.Iterator {
 	return newIAVLIterator(iTree, start, end, false)
 }
 
+func (st *Store) SnapshotIterator() types.Iterator {
+	var iTree *iavl.ImmutableTree
+
+	switch tree := st.tree.(type) {
+	case *immutableTree:
+		iTree = tree.ImmutableTree
+	case *iavl.MutableTree:
+		iTree = tree.ImmutableTree
+	}
+
+	return newIAVLIteratorSnapshot(iTree)
+}
+
 // Handle gatest the latest height, if height is 0
 func getHeight(tree Tree, req abci.RequestQuery) int64 {
 	height := req.Height
@@ -330,6 +343,37 @@ func newIAVLIterator(tree *iavl.ImmutableTree, start, end []byte, ascending bool
 	go iter.iterateRoutine()
 	go iter.initRoutine()
 	return iter
+}
+
+// newIAVLIteratorSnapshot will create a new iavlIterator for snapshotting.
+// CONTRACT: Caller must release the iavlIterator, as each one creates a new
+// goroutine.
+func newIAVLIteratorSnapshot(tree *iavl.ImmutableTree) *iavlIterator {
+	iter := &iavlIterator{
+		tree:      tree,
+		ascending: true,
+		iterCh:    make(chan tmkv.Pair), // Set capacity > 0?
+		quitCh:    make(chan struct{}),
+		initCh:    make(chan struct{}),
+	}
+	go iter.iterateRoutineSnapshot()
+	go iter.initRoutine()
+	return iter
+}
+
+// Run this to funnel items from the tree to iterCh.
+func (iter *iavlIterator) iterateRoutineSnapshot() {
+	iter.tree.IterateInsertion(
+		func(key, value []byte) bool {
+			select {
+			case <-iter.quitCh:
+				return true // done with iteration.
+			case iter.iterCh <- tmkv.Pair{Key: key, Value: value}:
+				return false // yay.
+			}
+		},
+	)
+	close(iter.iterCh) // done.
 }
 
 // Run this to funnel items from the tree to iterCh.
