@@ -696,5 +696,9 @@ func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*s
 // FIXME This assumes that CommitID.Version corresponds to Header.Height
 func (app *BaseApp) snapshot(id store.CommitID) error {
 	app.logger.Info("Taking state snapshot", "height", id.Version)
+	err := app.cms.Snapshot(id)
+	if err != nil {
+		return err
+	}
 	return nil
 }

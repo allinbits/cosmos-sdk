@@ -318,6 +318,14 @@ func (rs *Store) CacheWrapWithTrace(_ io.Writer, _ types.TraceContext) types.Cac
 }
 
 //----------------------------------------
+// +Snapshotter
+
+func (rs *Store) Snapshot(commitID types.CommitID) error {
+	fmt.Println("rootmultistore snapshot!")
+	return nil
+}
+
+//----------------------------------------
 // +MultiStore
 
 // CacheMultiStore cache-wraps the multi-store and returns a CacheMultiStore.

@@ -21,6 +21,11 @@ type Committer interface {
 	SetPruning(PruningOptions)
 }
 
+// something that can take and provide snapshots
+type Snapshotter interface {
+	Snapshot(CommitID) error
+}
+
 // Stores of MultiStore must implement CommitStore.
 type CommitStore interface {
 	Committer
@@ -120,6 +125,7 @@ type CacheMultiStore interface {
 // A non-cache MultiStore.
 type CommitMultiStore interface {
 	Committer
+	Snapshotter
 	MultiStore
 
 	// Mount a store of type using the given db.

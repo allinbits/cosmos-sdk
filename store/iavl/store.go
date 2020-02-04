@@ -1,6 +1,7 @@
 package iavl
 
 import (
+	"fmt"
 	"io"
 	"sync"
 
@@ -83,6 +84,16 @@ func (st *Store) GetImmutable(version int64) (*Store, error) {
 	}
 
 	return &Store{tree: &immutableTree{iTree}}, nil
+}
+
+// Implements Snapshotter.
+func (st *Store) Snapshot(id types.CommitID) error {
+	_, err := st.GetImmutable(id.Version)
+	if err != nil {
+		return err
+	}
+	fmt.Println("IAVL snapshot!")
+	return nil
 }
 
 // Implements Committer.
