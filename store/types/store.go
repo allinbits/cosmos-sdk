@@ -23,7 +23,7 @@ type Committer interface {
 
 // something that can take and provide snapshots
 type Snapshotter interface {
-	Snapshot(CommitID) error
+	Snapshot(CommitID, string) error
 }
 
 // Stores of MultiStore must implement CommitStore.

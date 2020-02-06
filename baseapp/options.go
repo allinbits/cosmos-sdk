@@ -44,6 +44,11 @@ func SetInterBlockCache(cache sdk.MultiStorePersistentCache) func(*BaseApp) {
 	return func(app *BaseApp) { app.setInterBlockCache(cache) }
 }
 
+// SetSnapshotDir returns a BaseApp option function that sets the snapshot directory.
+func SetSnapshotDir(snapshotDir string) func(*BaseApp) {
+	return func(bap *BaseApp) { bap.setSnapshotDir(snapshotDir) }
+}
+
 // SetSnapshotInterval returns a BaseApp option function that sets the snapshot interval.
 func SetSnapshotInterval(snapshotInterval uint64) func(*BaseApp) {
 	return func(bap *BaseApp) { bap.setSnapshotInterval(snapshotInterval) }

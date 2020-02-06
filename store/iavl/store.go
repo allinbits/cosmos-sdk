@@ -1,7 +1,6 @@
 package iavl
 
 import (
-	"fmt"
 	"io"
 	"sync"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/store/cachekv"
 	"github.com/cosmos/cosmos-sdk/store/tracekv"
 	"github.com/cosmos/cosmos-sdk/store/types"
+	"github.com/cosmos/cosmos-sdk/types/errors"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
@@ -84,16 +84,6 @@ func (st *Store) GetImmutable(version int64) (*Store, error) {
 	}
 
 	return &Store{tree: &immutableTree{iTree}}, nil
-}
-
-// Implements Snapshotter.
-func (st *Store) Snapshot(id types.CommitID) error {
-	_, err := st.GetImmutable(id.Version)
-	if err != nil {
-		return err
-	}
-	fmt.Println("IAVL snapshot!")
-	return nil
 }
 
 // Implements Committer.
@@ -195,19 +185,6 @@ func (st *Store) ReverseIterator(start, end []byte) types.Iterator {
 	return newIAVLIterator(iTree, start, end, false)
 }
 
-func (st *Store) SnapshotIterator() types.Iterator {
-	var iTree *iavl.ImmutableTree
-
-	switch tree := st.tree.(type) {
-	case *immutableTree:
-		iTree = tree.ImmutableTree
-	case *iavl.MutableTree:
-		iTree = tree.ImmutableTree
-	}
-
-	return newIAVLIteratorSnapshot(iTree)
-}
-
 // Handle gatest the latest height, if height is 0
 func getHeight(tree Tree, req abci.RequestQuery) int64 {
 	height := req.Height
@@ -296,6 +273,15 @@ func (st *Store) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
 	return res
 }
 
+// Export exports the IAVL store at the given version
+func (st *Store) Export(version int64) ([]iavl.ExportItem, error) {
+	store, err := st.GetImmutable(version)
+	if err != nil {
+		return nil, errors.Wrap(err, "IAVL export failed")
+	}
+	return store.tree.(*immutableTree).Export()
+}
+
 //----------------------------------------
 
 // Implements types.Iterator.
@@ -343,37 +329,6 @@ func newIAVLIterator(tree *iavl.ImmutableTree, start, end []byte, ascending bool
 	go iter.iterateRoutine()
 	go iter.initRoutine()
 	return iter
-}
-
-// newIAVLIteratorSnapshot will create a new iavlIterator for snapshotting.
-// CONTRACT: Caller must release the iavlIterator, as each one creates a new
-// goroutine.
-func newIAVLIteratorSnapshot(tree *iavl.ImmutableTree) *iavlIterator {
-	iter := &iavlIterator{
-		tree:      tree,
-		ascending: true,
-		iterCh:    make(chan tmkv.Pair), // Set capacity > 0?
-		quitCh:    make(chan struct{}),
-		initCh:    make(chan struct{}),
-	}
-	go iter.iterateRoutineSnapshot()
-	go iter.initRoutine()
-	return iter
-}
-
-// Run this to funnel items from the tree to iterCh.
-func (iter *iavlIterator) iterateRoutineSnapshot() {
-	iter.tree.IterateInsertion(
-		func(key, value []byte) bool {
-			select {
-			case <-iter.quitCh:
-				return true // done with iteration.
-			case iter.iterCh <- tmkv.Pair{Key: key, Value: value}:
-				return false // yay.
-			}
-		},
-	)
-	close(iter.iterCh) // done.
 }
 
 // Run this to funnel items from the tree to iterCh.

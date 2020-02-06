@@ -100,7 +100,7 @@ func (ms multiStore) SetInterBlockCache(_ sdk.MultiStorePersistentCache) {
 	panic("not implemented")
 }
 
-func (ms multiStore) Snapshot(commitID types.CommitID) error {
+func (ms multiStore) Snapshot(commitID types.CommitID, dir string) error {
 	panic("not implemented")
 }
 

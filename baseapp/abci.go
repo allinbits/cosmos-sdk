@@ -265,7 +265,8 @@ func (app *BaseApp) Commit() (res abci.ResponseCommit) {
 	// Take asynchronous snapshot if appropriate
 	if app.snapshotInterval > 0 && header.Height%int64(app.snapshotInterval) == 0 {
 		go func() {
-			err := app.snapshot(commitID)
+			app.logger.Info(fmt.Sprintf("Taking snapshot at height %v", header.Height))
+			err := app.cms.Snapshot(commitID, app.snapshotDir)
 			if err != nil {
 				app.logger.Error("Failed to take snapshot", "height", header.Height, "error", err.Error())
 			}

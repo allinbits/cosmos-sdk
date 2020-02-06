@@ -1,10 +1,17 @@
 package rootmulti
 
 import (
+	"crypto/sha1"
+	"encoding/gob"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 
+	"github.com/pkg/errors"
+	tmiavl "github.com/tendermint/iavl"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -321,29 +328,75 @@ func (rs *Store) CacheWrapWithTrace(_ io.Writer, _ types.TraceContext) types.Cac
 // +Snapshotter
 
 // Implements Snapshotter.
-func (rs *Store) Snapshot(commitID types.CommitID) error {
-	fmt.Println("rootmultistore snapshot!")
-	for name, store := range rs.stores {
-		fmt.Printf("Dumping %s\n", name)
-		switch s := store.(type) {
-		case *iavl.Store:
-			fmt.Println("IAVL")
-			iter := s.SnapshotIterator()
-			defer iter.Close()
-			for iter.Valid() {
-				iter.Next()
-				fmt.Printf("%x:%x\n", iter.Key(), iter.Value())
-			}
-			err := iter.Error()
-			if err != nil {
-				return err
-			}
-		default:
-			fmt.Println("Other")
+func (rs *Store) Snapshot(commitID types.CommitID, dir string) error {
+	if dir == "" {
+		return errors.New("Path to snapshot directory not given")
+	}
+
+	dir = path.Join(dir, fmt.Sprintf("%d", commitID.Version))
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to create snapshot directory %q", dir)
+	}
+
+	chunk := 0
+	for key := range rs.stores {
+		store, ok := rs.GetStore(key).(*iavl.Store)
+		if !ok {
+			fmt.Printf("Skipping snapshot of %q\n", key.Name())
+			continue
 		}
 
+		chunkDir := path.Join(dir, fmt.Sprintf("%d", chunk))
+		err = os.MkdirAll(chunkDir, 0755)
+		if err != nil {
+			return errors.Wrapf(err, "Failed to create snapshot chunk directory %q", chunkDir)
+		}
+		export, err := store.Export(commitID.Version)
+		if err != nil {
+			return err
+		}
+		chunkFile, err := os.Create(path.Join(chunkDir, "data"))
+		if err != nil {
+			return errors.Wrap(err, "Failed to create chunk file")
+		}
+		defer chunkFile.Close()
+		hasher := sha1.New()
+		encoder := gob.NewEncoder(io.MultiWriter(chunkFile, hasher))
+		err = encoder.Encode(SnapshotChunk{
+			Store: key.Name(),
+			Items: export,
+		})
+		if err != nil {
+			return errors.Wrapf(err, "Failed to encode chunk data for chunk %v", chunk)
+		}
+
+		err = ioutil.WriteFile(
+			path.Join(chunkDir, "checksum"), []byte(fmt.Sprintf("%x", hasher.Sum(nil))), 0644)
+		if err != nil {
+			return errors.Wrapf(err, "Failed to write chunk %v checksum", chunk)
+		}
+
+		snapshotFile, err := os.Create(path.Join(dir, "metadata"))
+		if err != nil {
+			return errors.Wrap(err, "Failed to create snapshot metadata file")
+		}
+		encoder = gob.NewEncoder(snapshotFile)
+		err = encoder.Encode(Snapshot{})
+		if err != nil {
+			return errors.Wrap(err, "Failed to encode snapshot metadata")
+		}
+
+		chunk++
 	}
 	return nil
+}
+
+type Snapshot struct{}
+
+type SnapshotChunk struct {
+	Store string
+	Items []tmiavl.ExportItem
 }
 
 //----------------------------------------

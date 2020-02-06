@@ -107,6 +107,11 @@ type BaseApp struct { // nolint: maligned
 	// interval between snapshots (in blocks)
 	snapshotInterval uint64
 
+	// snapshot directory path
+	// FIXME This should be derived from Config.RootDir, but unclear how to propagate
+	// via AppCreator
+	snapshotDir string
+
 	// application's version string
 	appVersion string
 }
@@ -355,6 +360,10 @@ func (app *BaseApp) setHaltTime(haltTime uint64) {
 
 func (app *BaseApp) setInterBlockCache(cache sdk.MultiStorePersistentCache) {
 	app.interBlockCache = cache
+}
+
+func (app *BaseApp) setSnapshotDir(snapshotDir string) {
+	app.snapshotDir = snapshotDir
 }
 
 func (app *BaseApp) setSnapshotInterval(snapshotInterval uint64) {
@@ -690,15 +699,4 @@ func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*s
 		Log:    strings.TrimSpace(msgLogs.String()),
 		Events: events,
 	}, nil
-}
-
-// snapshot takes a state snapshot
-// FIXME This assumes that CommitID.Version corresponds to Header.Height
-func (app *BaseApp) snapshot(id store.CommitID) error {
-	app.logger.Info("Taking state snapshot", "height", id.Version)
-	err := app.cms.Snapshot(id)
-	if err != nil {
-		return err
-	}
-	return nil
 }
