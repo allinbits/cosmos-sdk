@@ -333,7 +333,8 @@ func (rs *Store) Snapshot(commitID types.CommitID, dir string) error {
 		return errors.New("Path to snapshot directory not given")
 	}
 
-	dir = path.Join(dir, fmt.Sprintf("%d", commitID.Version))
+	// Format 1
+	dir = path.Join(dir, fmt.Sprintf("%d/1", commitID.Version))
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to create snapshot directory %q", dir)
