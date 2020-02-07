@@ -1,7 +1,7 @@
 package rootmulti
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // nolint: gosec
 	"encoding/gob"
 	"fmt"
 	"io"
@@ -362,7 +362,7 @@ func (rs *Store) Snapshot(commitID types.CommitID, dir string) error {
 			return errors.Wrap(err, "Failed to create chunk file")
 		}
 		defer chunkFile.Close()
-		hasher := sha1.New()
+		hasher := sha1.New() // nolint: gosec
 		encoder := gob.NewEncoder(io.MultiWriter(chunkFile, hasher))
 		err = encoder.Encode(SnapshotChunk{
 			Store: key.Name(),
