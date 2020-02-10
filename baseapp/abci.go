@@ -326,6 +326,28 @@ func (app *BaseApp) Query(req abci.RequestQuery) abci.ResponseQuery {
 	return sdkerrors.QueryResult(sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown query path"))
 }
 
+// ListSnapshots implements the ABCI interface.
+func (app *BaseApp) ListSnapshots(req abci.RequestListSnapshots) abci.ResponseListSnapshots {
+	return abci.ResponseListSnapshots{}
+}
+
+// OfferSnapshot implements the ABCI interface.
+func (app *BaseApp) OfferSnapshot(req abci.RequestOfferSnapshot) abci.ResponseOfferSnapshot {
+	return abci.ResponseOfferSnapshot{
+		Accepted: false,
+	}
+}
+
+// GetSnapshotChunk implements the ABCI interface.
+func (app *BaseApp) GetSnapshotChunk(req abci.RequestGetSnapshotChunk) abci.ResponseGetSnapshotChunk {
+	return abci.ResponseGetSnapshotChunk{}
+}
+
+// ApplySnapshotChunk implements the ABCI interface.
+func (app *BaseApp) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) abci.ResponseApplySnapshotChunk {
+	return abci.ResponseApplySnapshotChunk{}
+}
+
 func handleQueryApp(app *BaseApp, path []string, req abci.RequestQuery) abci.ResponseQuery {
 	if len(path) >= 2 {
 		switch path[1] {
