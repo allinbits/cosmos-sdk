@@ -2,8 +2,12 @@ package baseapp
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
+	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -328,7 +332,37 @@ func (app *BaseApp) Query(req abci.RequestQuery) abci.ResponseQuery {
 
 // ListSnapshots implements the ABCI interface.
 func (app *BaseApp) ListSnapshots(req abci.RequestListSnapshots) abci.ResponseListSnapshots {
-	return abci.ResponseListSnapshots{}
+	paths, err := filepath.Glob(path.Join(app.snapshotDir, "*/*/metadata"))
+	if err != nil {
+		panic(err)
+	}
+	snapshots := make([]*abci.Snapshot, 0, len(paths))
+	for _, metadataPath := range paths {
+		metadata, err := ioutil.ReadFile(metadataPath)
+		if err != nil {
+			panic(err)
+		}
+		snapshotPath := filepath.Dir(metadataPath)
+		format, err := strconv.ParseUint(filepath.Base(snapshotPath), 10, 32)
+		if err != nil {
+			panic(err)
+		}
+		height, err := strconv.ParseUint(filepath.Base(filepath.Dir(snapshotPath)), 10, 64)
+		if err != nil {
+			panic(err)
+		}
+		chunkPaths, err := filepath.Glob(path.Join(snapshotPath, "*/data"))
+		if err != nil {
+			panic(err)
+		}
+		snapshots = append(snapshots, &abci.Snapshot{
+			Height:   height,
+			Format:   uint32(format),
+			Chunks:   uint64(len(chunkPaths)),
+			Metadata: metadata,
+		})
+	}
+	return abci.ResponseListSnapshots{Snapshots: snapshots}
 }
 
 // OfferSnapshot implements the ABCI interface.
