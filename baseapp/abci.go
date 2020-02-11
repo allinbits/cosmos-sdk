@@ -367,8 +367,14 @@ func (app *BaseApp) ListSnapshots(req abci.RequestListSnapshots) abci.ResponseLi
 
 // OfferSnapshot implements the ABCI interface.
 func (app *BaseApp) OfferSnapshot(req abci.RequestOfferSnapshot) abci.ResponseOfferSnapshot {
+	if req.Snapshot.Format != 1 {
+		return abci.ResponseOfferSnapshot{
+			Accepted: false,
+			Reason:   abci.ResponseOfferSnapshot_invalid_format,
+		}
+	}
 	return abci.ResponseOfferSnapshot{
-		Accepted: false,
+		Accepted: true,
 	}
 }
 
