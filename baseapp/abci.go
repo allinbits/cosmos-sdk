@@ -1,6 +1,7 @@
 package baseapp
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -380,12 +381,39 @@ func (app *BaseApp) OfferSnapshot(req abci.RequestOfferSnapshot) abci.ResponseOf
 
 // GetSnapshotChunk implements the ABCI interface.
 func (app *BaseApp) GetSnapshotChunk(req abci.RequestGetSnapshotChunk) abci.ResponseGetSnapshotChunk {
-	return abci.ResponseGetSnapshotChunk{}
+	var err error
+	chunkDir := path.Join(app.snapshotDir, fmt.Sprintf("%d/%d/%d", req.Height, req.Format, req.Chunk))
+	if stat, err := os.Stat(chunkDir); err != nil {
+		panic(err)
+	} else if !stat.IsDir() {
+		return abci.ResponseGetSnapshotChunk{}
+	}
+	chunk := &abci.SnapshotChunk{
+		Height: req.Height,
+		Format: req.Format,
+		Chunk:  req.Chunk,
+	}
+	chunk.Data, err = ioutil.ReadFile(path.Join(chunkDir, "data"))
+	if err != nil {
+		panic(err)
+	}
+	checksum, err := ioutil.ReadFile(path.Join(chunkDir, "checksum"))
+	if err != nil {
+		panic(err)
+	}
+	chunk.Checksum, err = hex.DecodeString(string(checksum))
+	if err != nil {
+		panic(err)
+	}
+
+	return abci.ResponseGetSnapshotChunk{
+		Chunk: chunk,
+	}
 }
 
 // ApplySnapshotChunk implements the ABCI interface.
 func (app *BaseApp) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) abci.ResponseApplySnapshotChunk {
-	return abci.ResponseApplySnapshotChunk{}
+	return abci.ResponseApplySnapshotChunk{Applied: true}
 }
 
 func handleQueryApp(app *BaseApp, path []string, req abci.RequestQuery) abci.ResponseQuery {
