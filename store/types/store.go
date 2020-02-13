@@ -21,9 +21,11 @@ type Committer interface {
 	SetPruning(PruningOptions)
 }
 
-// something that can take and provide snapshots
+// something that can take and restore snapshots
 type Snapshotter interface {
 	Snapshot(CommitID, string) error
+	// FIXME This should be an iterator that can be fed chunks
+	Restore([]byte) error
 }
 
 // Stores of MultiStore must implement CommitStore.

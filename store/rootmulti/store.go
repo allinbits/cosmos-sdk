@@ -1,6 +1,7 @@
 package rootmulti
 
 import (
+	"bytes"
 	"crypto/sha1" // nolint: gosec
 	"encoding/gob"
 	"fmt"
@@ -365,8 +366,9 @@ func (rs *Store) Snapshot(commitID types.CommitID, dir string) error {
 		hasher := sha1.New() // nolint: gosec
 		encoder := gob.NewEncoder(io.MultiWriter(chunkFile, hasher))
 		err = encoder.Encode(SnapshotChunk{
-			Store: key.Name(),
-			Items: export,
+			Store:   key.Name(),
+			Version: commitID.Version,
+			Items:   export,
 		})
 		if err != nil {
 			return errors.Wrapf(err, "Failed to encode chunk data for chunk %v", chunk)
@@ -393,11 +395,24 @@ func (rs *Store) Snapshot(commitID types.CommitID, dir string) error {
 	return nil
 }
 
+// Implements Snapshotter
+func (rs *Store) Restore(data []byte) error {
+	buf := bytes.NewBuffer(data)
+	chunk := SnapshotChunk{}
+	err := gob.NewDecoder(buf).Decode(&chunk)
+	if err != nil {
+		return errors.Wrap(err, "failed to decode chunk")
+	}
+	// FIXME Check if store exists
+	return rs.GetStore(types.NewKVStoreKey(chunk.Store)).(*iavl.Store).Import(chunk.Version, chunk.Items)
+}
+
 type Snapshot struct{}
 
 type SnapshotChunk struct {
-	Store string
-	Items []tmiavl.ExportItem
+	Store   string
+	Version int64
+	Items   []tmiavl.ExportItem
 }
 
 //----------------------------------------

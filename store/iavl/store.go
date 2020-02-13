@@ -282,6 +282,11 @@ func (st *Store) Export(version int64) ([]iavl.ExportItem, error) {
 	return store.tree.(*immutableTree).Export()
 }
 
+// Import imports data into the IAVL store at the given version
+func (st *Store) Import(version int64, items []iavl.ExportItem) error {
+	return st.tree.(*iavl.MutableTree).Import(version, items)
+}
+
 //----------------------------------------
 
 // Implements types.Iterator.

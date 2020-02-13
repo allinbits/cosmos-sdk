@@ -104,6 +104,10 @@ func (ms multiStore) Snapshot(commitID types.CommitID, dir string) error {
 	panic("not implemented")
 }
 
+func (ms multiStore) Restore([]byte) error {
+	panic("not implemented")
+}
+
 var _ sdk.KVStore = kvStore{}
 
 type kvStore struct {
