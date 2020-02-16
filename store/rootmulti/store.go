@@ -404,10 +404,13 @@ func (rs *Store) Restore(data []byte) ([]byte, error) {
 		return nil, errors.Wrap(err, "failed to decode chunk")
 	}
 	// FIXME Check if store exists
-	err = rs.GetStore(types.NewKVStoreKey(chunk.Store)).(*iavl.Store).Import(chunk.Version, chunk.Items)
+	store := rs.GetStore(types.NewKVStoreKey(chunk.Store)).(*iavl.Store)
+	err = store.Import(chunk.Version, chunk.Items)
 	if err != nil {
 		return nil, err
 	}
+	rs.lastCommitID = store.LastCommitID()
+
 	// Calculate the root hash (FIXME copied from CommitInfo.Hash and storeInfo.Hash)
 	m := make(map[string][]byte, len(rs.stores))
 	for key, store := range rs.stores {
