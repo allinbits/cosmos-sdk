@@ -104,7 +104,7 @@ func (ms multiStore) Snapshot(commitID types.CommitID, dir string) error {
 	panic("not implemented")
 }
 
-func (ms multiStore) Restore([]byte) error {
+func (ms multiStore) Restore([]byte) ([]byte, error) {
 	panic("not implemented")
 }
 

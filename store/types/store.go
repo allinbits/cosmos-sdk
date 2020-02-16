@@ -25,7 +25,7 @@ type Committer interface {
 type Snapshotter interface {
 	Snapshot(CommitID, string) error
 	// FIXME This should be an iterator that can be fed chunks
-	Restore([]byte) error
+	Restore([]byte) ([]byte, error)
 }
 
 // Stores of MultiStore must implement CommitStore.

@@ -396,15 +396,34 @@ func (rs *Store) Snapshot(commitID types.CommitID, dir string) error {
 }
 
 // Implements Snapshotter
-func (rs *Store) Restore(data []byte) error {
+func (rs *Store) Restore(data []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(data)
 	chunk := SnapshotChunk{}
 	err := gob.NewDecoder(buf).Decode(&chunk)
 	if err != nil {
-		return errors.Wrap(err, "failed to decode chunk")
+		return nil, errors.Wrap(err, "failed to decode chunk")
 	}
 	// FIXME Check if store exists
-	return rs.GetStore(types.NewKVStoreKey(chunk.Store)).(*iavl.Store).Import(chunk.Version, chunk.Items)
+	err = rs.GetStore(types.NewKVStoreKey(chunk.Store)).(*iavl.Store).Import(chunk.Version, chunk.Items)
+	if err != nil {
+		return nil, err
+	}
+	// Calculate the root hash (FIXME copied from CommitInfo.Hash and storeInfo.Hash)
+	m := make(map[string][]byte, len(rs.stores))
+	for key, store := range rs.stores {
+		if store.GetStoreType() == types.StoreTypeTransient {
+			continue
+		}
+		// FIXME Apparently we have to hash the commit ID hash 🤷‍♀️
+		hasher := tmhash.New()
+		_, err := hasher.Write(store.LastCommitID().Hash)
+		if err != nil {
+			return nil, err
+		}
+		m[key.Name()] = hasher.Sum(nil)
+	}
+
+	return merkle.SimpleHashFromMap(m), nil
 }
 
 type Snapshot struct{}
