@@ -409,7 +409,6 @@ func (rs *Store) Restore(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	rs.lastCommitID = store.LastCommitID()
 
 	// Calculate the root hash (FIXME copied from CommitInfo.Hash and storeInfo.Hash)
 	m := make(map[string][]byte, len(rs.stores))
@@ -426,7 +425,12 @@ func (rs *Store) Restore(data []byte) ([]byte, error) {
 		m[key.Name()] = hasher.Sum(nil)
 	}
 
-	return merkle.SimpleHashFromMap(m), nil
+	hash := merkle.SimpleHashFromMap(m)
+	rs.lastCommitID = types.CommitID{
+		Version: chunk.Version,
+		Hash:    hash,
+	}
+	return hash, nil
 }
 
 type Snapshot struct{}
