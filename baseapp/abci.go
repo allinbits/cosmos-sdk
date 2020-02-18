@@ -359,7 +359,7 @@ func (app *BaseApp) ListSnapshots(req abci.RequestListSnapshots) abci.ResponseLi
 		snapshots = append(snapshots, &abci.Snapshot{
 			Height:   height,
 			Format:   uint32(format),
-			Chunks:   uint64(len(chunkPaths)),
+			Chunks:   uint32(len(chunkPaths)),
 			Metadata: metadata,
 		})
 	}
