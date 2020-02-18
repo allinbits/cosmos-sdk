@@ -341,7 +341,7 @@ func (rs *Store) Snapshot(commitID types.CommitID, dir string) error {
 		return errors.Wrapf(err, "Failed to create snapshot directory %q", dir)
 	}
 
-	chunk := 0
+	chunk := 1
 	for key := range rs.stores {
 		store, ok := rs.GetStore(key).(*iavl.Store)
 		if !ok {
