@@ -414,7 +414,7 @@ func (app *BaseApp) GetSnapshotChunk(req abci.RequestGetSnapshotChunk) abci.Resp
 // ApplySnapshotChunk implements the ABCI interface.
 func (app *BaseApp) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) abci.ResponseApplySnapshotChunk {
 	// FIXME Needs verification
-	appHash, err := app.cms.Restore(req.Chunk.Data)
+	_, err := app.cms.Restore(req.Chunk.Data)
 	if err != nil {
 		app.Logger().Error("Failed to apply chunk", "err", err)
 		return abci.ResponseApplySnapshotChunk{
@@ -423,7 +423,6 @@ func (app *BaseApp) ApplySnapshotChunk(req abci.RequestApplySnapshotChunk) abci.
 	}
 	return abci.ResponseApplySnapshotChunk{
 		Applied: true,
-		AppHash: appHash,
 	}
 }
 
