@@ -21,7 +21,7 @@ all: tools build lint test
 ###############################################################################
 
 build: go.sum
-	@go build -mod=readonly ./...
+	@go build ./...
 .PHONY: build
 
 mocks: $(MOCKS_DIR)
