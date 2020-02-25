@@ -233,6 +233,36 @@ func (rs *Store) CacheMultiStore() types.CacheMultiStore {
 	return cachemulti.NewStore(rs.db, stores, rs.keysByName, rs.traceWriter, rs.traceContext)
 }
 
+// CacheMultiStoreWithVersion is analogous to CacheMultiStore except that it
+// attempts to load stores at a given version (height). An error is returned if
+// any store cannot be loaded. This should only be used for querying and
+// iterating at past heights.
+func (rs *Store) CacheMultiStoreWithVersion(version int64) (types.CacheMultiStore, error) {
+	cachedStores := make(map[types.StoreKey]types.CacheWrapper)
+	for key, store := range rs.stores {
+		switch store.GetStoreType() {
+		case types.StoreTypeIAVL:
+			// If the store is wrapped with an inter-block cache, we must first unwrap
+			// it to get the underlying IAVL store.
+			store = rs.GetCommitKVStore(key)
+
+			// Attempt to lazy-load an already saved IAVL store version. If the
+			// version does not exist or is pruned, an error should be returned.
+			iavlStore, err := store.(*iavl.Store).GetImmutable(version)
+			if err != nil {
+				return nil, err
+			}
+
+			cachedStores[key] = iavlStore
+
+		default:
+			cachedStores[key] = store
+		}
+	}
+
+	return cachemulti.NewStore(rs.db, cachedStores, rs.keysByName, rs.traceWriter, rs.traceContext), nil
+}
+
 // Implements MultiStore.
 // If the store does not exist, panics.
 func (rs *Store) GetStore(key types.StoreKey) types.Store {

@@ -458,8 +458,23 @@ func handleQueryStore(app *BaseApp, path []string, req abci.RequestQuery) (res a
 		return sdk.ErrUnknownRequest(msg).QueryResult()
 	}
 
+	// when a client did not provide a query height, manually inject the latest
+	if req.Height == 0 {
+		req.Height = app.LastBlockHeight()
+	}
+
+	if req.Height <= 1 && req.Prove {
+		return sdk.ErrUnknownRequest(
+			"cannot query with proof when height <= 1; please provide a valid height",
+		).QueryResult()
+	}
+
 	req.Path = "/" + strings.Join(path[1:], "/")
-	return queryable.Query(req)
+
+	resp := queryable.Query(req)
+	resp.Height = req.Height
+
+	return resp
 }
 
 func handleQueryP2P(app *BaseApp, path []string, _ abci.RequestQuery) (res abci.ResponseQuery) {
@@ -499,27 +514,50 @@ func handleQueryCustom(app *BaseApp, path []string, req abci.RequestQuery) (res 
 		return sdk.ErrUnknownRequest(fmt.Sprintf("no custom querier found for route %s", path[1])).QueryResult()
 	}
 
+	// when a client did not provide a query height, manually inject the latest
+	if req.Height == 0 {
+		req.Height = app.LastBlockHeight()
+	}
+
+	if req.Height <= 1 && req.Prove {
+		return sdk.ErrUnknownRequest(
+			"cannot query with proof when height <= 1; please provide a valid height",
+		).QueryResult()
+	}
+
+	cacheMS, err := app.cms.CacheMultiStoreWithVersion(req.Height)
+	if err != nil {
+		return sdk.ErrUnknownRequest(
+			fmt.Sprintf(
+				"failed to load state at height %d; %s (latest height: %d)",
+				req.Height, err, app.LastBlockHeight(),
+			),
+		).QueryResult()
+	}
+
 	// cache wrap the commit-multistore for safety
 	ctx := sdk.NewContext(
-		app.cms.CacheMultiStore(), app.checkState.ctx.BlockHeader(), true, app.logger,
+		cacheMS, app.checkState.ctx.BlockHeader(), true, app.logger,
 	).WithMinGasPrices(app.minGasPrices)
 
 	// Passes the rest of the path as an argument to the querier.
 	//
 	// For example, in the path "custom/gov/proposal/test", the gov querier gets
 	// []string{"proposal", "test"} as the path.
-	resBytes, err := querier(ctx, path[2:], req)
-	if err != nil {
+	resBytes, sdkErr := querier(ctx, path[2:], req)
+	if sdkErr != nil {
 		return abci.ResponseQuery{
-			Code:      uint32(err.Code()),
-			Codespace: string(err.Codespace()),
-			Log:       err.ABCILog(),
+			Code:      uint32(sdkErr.Code()),
+			Codespace: string(sdkErr.Codespace()),
+			Log:       sdkErr.ABCILog(),
+			Height:    req.Height,
 		}
 	}
 
 	return abci.ResponseQuery{
-		Code:  uint32(sdk.CodeOK),
-		Value: resBytes,
+		Code:   uint32(sdk.CodeOK),
+		Height: req.Height,
+		Value:  resBytes,
 	}
 }
 

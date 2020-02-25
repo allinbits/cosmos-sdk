@@ -46,6 +46,10 @@ type MultiStore interface { //nolint
 	// call CacheMultiStore.Write().
 	CacheMultiStore() CacheMultiStore
 
+	// CacheMultiStoreWithVersion cache-wraps the underlying MultiStore where
+	// each stored is loaded at a specific version (height).
+	CacheMultiStoreWithVersion(version int64) (CacheMultiStore, error)
+
 	// Convenience for fetching substores.
 	// If the store does not exist, panics.
 	GetStore(StoreKey) Store
