@@ -63,7 +63,7 @@ jobs:
       - run:
           name: Build
           command: make build
-      - run
+      - run:
           name: Ensure top-level packages don't depend x/ subdirs
           command: XDIR=github.com/cosmos/cosmos-sdk/x ; for pkg in `go list ./... | grep -v "${XDIR}"` ; do go list -f '{{ join .Deps "\n" }}' $pkg | grep "${XDIR}" &>/dev/null && echo "$pkg depends on x" ; done
       - run:
