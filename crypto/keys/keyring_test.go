@@ -36,10 +36,16 @@ func TestLazyKeyManagementKeyRing(t *testing.T) {
 	// create some keys
 	_, err = kb.Get(n1)
 	require.Error(t, err)
-	i, _, err := kb.CreateMnemonic(n1, English, p1, algo)
 
+	i, _, err := kb.CreateMnemonic(n1, English, p1, algo)
 	require.NoError(t, err)
 	require.Equal(t, n1, i.GetName())
+
+	// creating twice should fail
+	mnemonic2, _, err := kb.CreateMnemonic(n1, English, p1, algo)
+	require.Error(t, err)
+	require.Equal(t, n1, mnemonic2.GetName())
+
 	_, _, err = kb.CreateMnemonic(n2, English, p2, algo)
 	require.NoError(t, err)
 
@@ -363,6 +369,10 @@ func TestLazySeedPhraseKeyRing(t *testing.T) {
 	require.Equal(t, n2, newInfo.GetName())
 	require.Equal(t, info.GetPubKey().Address(), newInfo.GetPubKey().Address())
 	require.Equal(t, info.GetPubKey(), newInfo.GetPubKey())
+
+	// Re-create in same key should fail
+	newInfo, err = kb.CreateAccount(n2, mnemonic, DefaultBIP39Passphrase, p2, hdPath, Secp256k1)
+	require.Error(t, err)
 }
 
 func TestKeyringKeybaseExportImportPrivKey(t *testing.T) {
