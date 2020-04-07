@@ -30,6 +30,7 @@ package module
 
 import (
 	"encoding/json"
+	"github.com/cosmos/cosmos-sdk/client/tx"
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
@@ -52,7 +53,6 @@ type AppModuleBasic interface {
 
 	// client functionality
 	RegisterRESTRoutes(context.CLIContext, *mux.Router)
-	GetTxCmd(*codec.Codec) *cobra.Command
 	GetQueryCmd(*codec.Codec) *cobra.Command
 }
 
@@ -103,15 +103,6 @@ func (bm BasicManager) RegisterRESTRoutes(ctx context.CLIContext, rtr *mux.Route
 	}
 }
 
-// AddTxCommands adds all tx commands to the rootTxCmd
-func (bm BasicManager) AddTxCommands(rootTxCmd *cobra.Command, cdc *codec.Codec) {
-	for _, b := range bm {
-		if cmd := b.GetTxCmd(cdc); cmd != nil {
-			rootTxCmd.AddCommand(cmd)
-		}
-	}
-}
-
 // AddQueryCommands adds all query commands to the rootQueryCmd
 func (bm BasicManager) AddQueryCommands(rootQueryCmd *cobra.Command, cdc *codec.Codec) {
 	for _, b := range bm {
@@ -147,6 +138,9 @@ type AppModule interface {
 	// ABCI
 	BeginBlock(sdk.Context, abci.RequestBeginBlock)
 	EndBlock(sdk.Context, abci.RequestEndBlock) []abci.ValidatorUpdate
+
+	// client
+	GetTxCmd(txg tx.Generator, ar tx.AccountRetriever) *cobra.Command
 }
 
 //___________________________
@@ -184,6 +178,10 @@ func (gam GenesisOnlyAppModule) BeginBlock(ctx sdk.Context, req abci.RequestBegi
 // EndBlock returns an empty module end-block
 func (GenesisOnlyAppModule) EndBlock(_ sdk.Context, _ abci.RequestEndBlock) []abci.ValidatorUpdate {
 	return []abci.ValidatorUpdate{}
+}
+
+func (gam GenesisOnlyAppModule) GetTxCmd(tx.Generator, tx.AccountRetriever) *cobra.Command {
+	return nil
 }
 
 //____________________________________________________________________________
@@ -330,5 +328,14 @@ func (m *Manager) EndBlock(ctx sdk.Context, req abci.RequestEndBlock) abci.Respo
 	return abci.ResponseEndBlock{
 		ValidatorUpdates: validatorUpdates,
 		Events:           ctx.EventManager().ABCIEvents(),
+	}
+}
+
+// AddTxCommands adds all tx commands to the rootTxCmd
+func (m Manager) AddTxCommands(rootTxCmd *cobra.Command, txg tx.Generator, ar tx.AccountRetriever) {
+	for _, m := range m.Modules {
+		if cmd := m.GetTxCmd(txg, ar); cmd != nil {
+			rootTxCmd.AddCommand(cmd)
+		}
 	}
 }

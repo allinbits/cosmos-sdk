@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/client/tx"
 	"math/rand"
 
 	"github.com/gorilla/mux"
@@ -58,11 +59,6 @@ func (AppModuleBasic) ValidateGenesis(cdc codec.JSONMarshaler, bz json.RawMessag
 // RegisterRESTRoutes registers the REST routes for the auth module.
 func (AppModuleBasic) RegisterRESTRoutes(ctx context.CLIContext, rtr *mux.Router) {
 	rest.RegisterRoutes(ctx, rtr, types.StoreKey)
-}
-
-// GetTxCmd returns the root tx command for the auth module.
-func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
-	return cli.GetTxCmd(cdc)
 }
 
 // GetQueryCmd returns the root query command for the auth module.
@@ -136,6 +132,10 @@ func (AppModule) BeginBlock(_ sdk.Context, _ abci.RequestBeginBlock) {}
 // updates.
 func (AppModule) EndBlock(_ sdk.Context, _ abci.RequestEndBlock) []abci.ValidatorUpdate {
 	return []abci.ValidatorUpdate{}
+}
+
+func (am AppModule) GetTxCmd(tx.Generator, tx.AccountRetriever) *cobra.Command {
+	return nil
 }
 
 //____________________________________________________________________________

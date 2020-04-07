@@ -3,6 +3,7 @@ package bank
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/client/tx"
 	"math/rand"
 
 	"github.com/gorilla/mux"
@@ -57,11 +58,6 @@ func (AppModuleBasic) RegisterRESTRoutes(ctx context.CLIContext, rtr *mux.Router
 	rest.RegisterRoutes(ctx, rtr)
 }
 
-// GetTxCmd returns the root tx command for the bank module.
-func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
-	return cli.GetTxCmd(cdc)
-}
-
 // GetQueryCmd returns no root query command for the bank module.
 func (AppModuleBasic) GetQueryCmd(cdc *codec.Codec) *cobra.Command {
 	return cli.GetQueryCmd(cdc)
@@ -75,12 +71,14 @@ type AppModule struct {
 
 	keeper        Keeper
 	accountKeeper types.AccountKeeper
+	cdc           codec.Marshaler
 }
 
 // NewAppModule creates a new AppModule object
-func NewAppModule(keeper Keeper, accountKeeper types.AccountKeeper) AppModule {
+func NewAppModule(cdc codec.Marshaler, keeper Keeper, accountKeeper types.AccountKeeper) AppModule {
 	return AppModule{
 		AppModuleBasic: AppModuleBasic{},
+		cdc:            cdc,
 		keeper:         keeper,
 		accountKeeper:  accountKeeper,
 	}
@@ -131,6 +129,10 @@ func (AppModule) BeginBlock(_ sdk.Context, _ abci.RequestBeginBlock) {}
 // updates.
 func (AppModule) EndBlock(_ sdk.Context, _ abci.RequestEndBlock) []abci.ValidatorUpdate {
 	return []abci.ValidatorUpdate{}
+}
+
+func (am AppModule) GetTxCmd(txg tx.Generator, ar tx.AccountRetriever) *cobra.Command {
+	return cli.NewTxCmd(am.cdc, txg, ar)
 }
 
 //____________________________________________________________________________

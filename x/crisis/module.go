@@ -3,7 +3,8 @@ package crisis
 import (
 	"encoding/json"
 	"fmt"
-
+	"github.com/cosmos/cosmos-sdk/client/tx"
+	"github.com/cosmos/cosmos-sdk/x/crisis/client/cli"
 	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
-	"github.com/cosmos/cosmos-sdk/x/crisis/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/crisis/keeper"
 	"github.com/cosmos/cosmos-sdk/x/crisis/types"
 )
@@ -55,11 +55,6 @@ func (AppModuleBasic) ValidateGenesis(cdc codec.JSONMarshaler, bz json.RawMessag
 // RegisterRESTRoutes registers no REST routes for the crisis module.
 func (AppModuleBasic) RegisterRESTRoutes(_ context.CLIContext, _ *mux.Router) {}
 
-// GetTxCmd returns the root tx command for the crisis module.
-func (AppModuleBasic) GetTxCmd(cdc *codec.Codec) *cobra.Command {
-	return cli.GetTxCmd(cdc)
-}
-
 // GetQueryCmd returns no root query command for the crisis module.
 func (AppModuleBasic) GetQueryCmd(_ *codec.Codec) *cobra.Command { return nil }
 
@@ -73,12 +68,14 @@ type AppModule struct {
 	// manager is created, the invariants can be properly registered and
 	// executed.
 	keeper *keeper.Keeper
+	cdc    codec.Marshaler
 }
 
 // NewAppModule creates a new AppModule object
-func NewAppModule(keeper *keeper.Keeper) AppModule {
+func NewAppModule(cdc codec.Marshaler, keeper *keeper.Keeper) AppModule {
 	return AppModule{
 		AppModuleBasic: AppModuleBasic{},
+		cdc:            cdc,
 		keeper:         keeper,
 	}
 }
@@ -133,4 +130,8 @@ func (AppModule) BeginBlock(_ sdk.Context, _ abci.RequestBeginBlock) {}
 func (am AppModule) EndBlock(ctx sdk.Context, _ abci.RequestEndBlock) []abci.ValidatorUpdate {
 	EndBlocker(ctx, *am.keeper)
 	return []abci.ValidatorUpdate{}
+}
+
+func (am AppModule) GetTxCmd(txg tx.Generator, ar tx.AccountRetriever) *cobra.Command {
+	return cli.NewTxCmd(am.cdc, txg, ar)
 }

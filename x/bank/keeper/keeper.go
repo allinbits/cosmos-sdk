@@ -579,3 +579,7 @@ func (k BaseKeeper) trackUndelegation(ctx sdk.Context, addr sdk.AccAddress, amt 
 
 	return nil
 }
+
+func (k BaseViewKeeper) Marshaler() codec.Marshaler {
+	return k.cdc
+}
