@@ -58,6 +58,8 @@ func NewHandler(k Keeper) sdk.Handler {
 			if err != nil {
 				return nil, err
 			}
+			mod, _, _ := k.PortKeeper.LookupModuleByPort(ctx, "bank")
+			fmt.Println("get after create", mod)
 
 			return res, nil
 
@@ -83,6 +85,9 @@ func NewHandler(k Keeper) sdk.Handler {
 			if err != nil {
 				return nil, err
 			}
+
+			mod, _, _ := k.PortKeeper.LookupModuleByPort(ctx, "bank")
+			fmt.Println("get after create", mod)
 
 			return res, nil
 
