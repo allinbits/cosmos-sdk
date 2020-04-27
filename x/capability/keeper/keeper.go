@@ -176,6 +176,8 @@ func (sk ScopedKeeper) NewCapability(ctx sdk.Context, name string) (*types.Capab
 	store.Set(types.KeyIndex, types.IndexToKey(index+1))
 
 	memStore := ctx.KVStore(sk.memKey)
+	fmt.Printf("MemStore Address at NewCapability: %p\n", memStore)
+	fmt.Printf("MemStore Key at NewCapability: %p\n", sk.memKey)
 
 	// Set the forward mapping between the module and capability tuple and the
 	// capability name in the memKVStore
@@ -218,6 +220,8 @@ func (sk ScopedKeeper) ClaimCapability(ctx sdk.Context, cap *types.Capability, n
 	}
 
 	memStore := ctx.KVStore(sk.memKey)
+	fmt.Printf("MemStore Address at ClaimCapability: %p\n", memStore)
+	fmt.Printf("MemStore Key at ClaimCapability: %p\n", sk.memKey)
 
 	// Set the forward mapping between the module and capability tuple and the
 	// capability name in the memKVStore
@@ -279,6 +283,9 @@ func (sk ScopedKeeper) ReleaseCapability(ctx sdk.Context, cap *types.Capability)
 // own.
 func (sk ScopedKeeper) GetCapability(ctx sdk.Context, name string) (*types.Capability, bool) {
 	memStore := ctx.KVStore(sk.memKey)
+
+	fmt.Printf("MemStore Address at GetCapability: %p\n", memStore)
+	fmt.Printf("MemStore Key at GetCapability: %p\n", sk.memKey)
 
 	key := types.RevCapabilityKey(sk.module, name)
 	indexBytes := memStore.Get(key)

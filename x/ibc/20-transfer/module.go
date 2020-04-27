@@ -149,6 +149,7 @@ func (am AppModule) OnChanOpenInit(
 	// TODO: Enforce ordering, currently relayers use ORDERED channels
 
 	if !am.keeper.IsBound(ctx, "bank") {
+		fmt.Println("binding to bank port here")
 		am.keeper.BindPort(ctx, "bank")
 	}
 
@@ -184,6 +185,7 @@ func (am AppModule) OnChanOpenTry(
 ) error {
 	// TODO: Enforce ordering, currently relayers use ORDERED channels
 	if !am.keeper.IsBound(ctx, "bank") {
+		fmt.Println("binding to bank port here")
 		am.keeper.BindPort(ctx, "bank")
 	}
 

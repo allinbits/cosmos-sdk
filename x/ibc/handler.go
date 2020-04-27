@@ -41,6 +41,7 @@ func NewHandler(k Keeper) sdk.Handler {
 		// IBC channel msgs
 		case channel.MsgChannelOpenInit:
 			// Lookup module by port capability
+			fmt.Println("Looking up on bound port", msg.PortID)
 			module, portCap, ok := k.PortKeeper.LookupModuleByPort(ctx, msg.PortID)
 			if !ok {
 				return nil, sdkerrors.Wrap(port.ErrInvalidPort, "could not retrieve module from portID")
@@ -58,6 +59,7 @@ func NewHandler(k Keeper) sdk.Handler {
 			if err != nil {
 				return nil, err
 			}
+			ctx = ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
 			mod, _, _ := k.PortKeeper.LookupModuleByPort(ctx, "bank")
 			fmt.Println("get after create", mod)
 
@@ -65,6 +67,7 @@ func NewHandler(k Keeper) sdk.Handler {
 
 		case channel.MsgChannelOpenTry:
 			// Lookup module by port capability
+			fmt.Println("Looking up on bound port", msg.PortID)
 			module, portCap, ok := k.PortKeeper.LookupModuleByPort(ctx, msg.PortID)
 			if !ok {
 				fmt.Println("could not find module for", msg.PortID)
@@ -85,6 +88,7 @@ func NewHandler(k Keeper) sdk.Handler {
 			if err != nil {
 				return nil, err
 			}
+			ctx = ctx.WithGasMeter(sdk.NewInfiniteGasMeter())
 
 			mod, _, _ := k.PortKeeper.LookupModuleByPort(ctx, "bank")
 			fmt.Println("get after create", mod)
