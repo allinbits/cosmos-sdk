@@ -170,6 +170,8 @@ func (sk ScopedKeeper) NewCapability(ctx sdk.Context, name string) (*types.Capab
 		return nil, err
 	}
 
+	fmt.Println("Creating capability", name)
+
 	// increment global index
 	store.Set(types.KeyIndex, types.IndexToKey(index+1))
 
@@ -286,12 +288,14 @@ func (sk ScopedKeeper) GetCapability(ctx sdk.Context, name string) (*types.Capab
 		// to still have the capability in the go map since changes to
 		// go map do not automatically get reverted on tx failure,
 		// so we delete here to remove unnecessary values in map
+		fmt.Println("Deleting map entry", name)
 		delete(sk.capMap, index)
 		return nil, false
 	}
 
 	cap := sk.capMap[index]
 	if cap == nil {
+		fmt.Println("Deleting meStore", name)
 		// delete key from store to remove unnecessary mapping
 		memStore.Delete(key)
 		return nil, false

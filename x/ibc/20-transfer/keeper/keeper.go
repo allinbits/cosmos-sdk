@@ -105,6 +105,10 @@ func (k Keeper) BindPort(ctx sdk.Context, portID string) error {
 	return k.ClaimCapability(ctx, cap, porttypes.PortPath(portID))
 }
 
+func (k Keeper) IsBound(ctx sdk.Context, portID string) bool {
+	return k.portKeeper.IsBound(ctx, portID)
+}
+
 // GetPort returns the portID for the transfer module. Used in ExportGenesis
 func (k Keeper) GetPort(ctx sdk.Context) string {
 	store := ctx.KVStore(k.storeKey)

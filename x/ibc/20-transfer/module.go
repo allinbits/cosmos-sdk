@@ -148,11 +148,15 @@ func (am AppModule) OnChanOpenInit(
 ) error {
 	// TODO: Enforce ordering, currently relayers use ORDERED channels
 
-	// Require portID is the portID transfer module is bound to
-	boundPort := am.keeper.GetPort(ctx)
-	if boundPort != portID {
-		return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid port: %s, expected %s", portID, boundPort)
+	if !am.keeper.IsBound(ctx, "bank") {
+		am.keeper.BindPort(ctx, "bank")
 	}
+
+	// Require portID is the portID transfer module is bound to
+	// boundPort := am.keeper.GetPort(ctx)
+	// if boundPort != portID {
+	// 	return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid port: %s, expected %s", portID, boundPort)
+	// }
 
 	if version != types.Version {
 		return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid version: %s, expected %s", version, "ics20-1")
@@ -179,12 +183,15 @@ func (am AppModule) OnChanOpenTry(
 	counterpartyVersion string,
 ) error {
 	// TODO: Enforce ordering, currently relayers use ORDERED channels
+	if !am.keeper.IsBound(ctx, "bank") {
+		am.keeper.BindPort(ctx, "bank")
+	}
 
 	// Require portID is the portID transfer module is bound to
-	boundPort := am.keeper.GetPort(ctx)
-	if boundPort != portID {
-		return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid port: %s, expected %s", portID, boundPort)
-	}
+	// boundPort := am.keeper.GetPort(ctx)
+	// if boundPort != portID {
+	// 	return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid port: %s, expected %s", portID, boundPort)
+	// }
 
 	if version != types.Version {
 		return sdkerrors.Wrapf(porttypes.ErrInvalidPort, "invalid version: %s, expected %s", version, "ics20-1")

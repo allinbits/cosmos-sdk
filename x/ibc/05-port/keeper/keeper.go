@@ -22,8 +22,8 @@ func NewKeeper(sck capability.ScopedKeeper) Keeper {
 	}
 }
 
-// isBounded checks a given port ID is already bounded.
-func (k Keeper) isBound(ctx sdk.Context, portID string) bool {
+// IsBounded checks a given port ID is already bounded.
+func (k Keeper) IsBound(ctx sdk.Context, portID string) bool {
 	_, ok := k.scopedKeeper.GetCapability(ctx, types.PortPath(portID))
 	return ok
 }
@@ -37,7 +37,7 @@ func (k *Keeper) BindPort(ctx sdk.Context, portID string) *capability.Capability
 		panic(err.Error())
 	}
 
-	if k.isBound(ctx, portID) {
+	if k.IsBound(ctx, portID) {
 		panic(fmt.Sprintf("port %s is already bound", portID))
 	}
 

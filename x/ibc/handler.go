@@ -1,6 +1,8 @@
 package ibc
 
 import (
+	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	client "github.com/cosmos/cosmos-sdk/x/ibc/02-client"
@@ -63,9 +65,12 @@ func NewHandler(k Keeper) sdk.Handler {
 			// Lookup module by port capability
 			module, portCap, ok := k.PortKeeper.LookupModuleByPort(ctx, msg.PortID)
 			if !ok {
-				return nil, sdkerrors.Wrap(port.ErrInvalidPort, "could not retrieve module from portID")
+				fmt.Println("could not find module for", msg.PortID)
+				return nil, sdkerrors.Wrapf(port.ErrInvalidPort, "could not retrieve module from portID: %s", msg.PortID)
 			}
+			fmt.Println("past lookup")
 			res, cap, err := channel.HandleMsgChannelOpenTry(ctx, k.ChannelKeeper, portCap, msg)
+			fmt.Println("past channel handler")
 			if err != nil {
 				return nil, err
 			}
@@ -109,6 +114,9 @@ func NewHandler(k Keeper) sdk.Handler {
 			if !ok {
 				return nil, sdkerrors.Wrapf(port.ErrInvalidRoute, "route not found to module: %s", module)
 			}
+
+			mod, _, _ := k.PortKeeper.LookupModuleByPort(ctx, "bank")
+			fmt.Println("confirm lookup", mod)
 
 			err := cbs.OnChanOpenConfirm(ctx, msg.PortID, msg.ChannelID)
 			if err != nil {
