@@ -3,7 +3,9 @@ package tracekv
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/cosmos/cosmos-sdk/store/types"
 	"github.com/cosmos/cosmos-sdk/types/errors"
@@ -60,6 +62,10 @@ func (tkv *Store) Get(key []byte) []byte {
 // Set implements the KVStore interface. It traces a write operation and
 // delegates the Set call to the parent KVStore.
 func (tkv *Store) Set(key []byte, value []byte) {
+	if strings.Contains(string(key), "fwd") || strings.Contains(string(key), "rev") {
+		fmt.Printf("TrackStore Set: %s %v\n", string(key), value)
+	}
+
 	writeOperation(tkv.writer, writeOp, tkv.context, key, value)
 	tkv.parent.Set(key, value)
 }

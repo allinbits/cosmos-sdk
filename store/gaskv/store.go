@@ -1,7 +1,9 @@
 package gaskv
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/cosmos/cosmos-sdk/store/types"
 )
@@ -49,6 +51,9 @@ func (gs *Store) Set(key []byte, value []byte) {
 	gs.gasMeter.ConsumeGas(gs.gasConfig.WriteCostFlat, types.GasWriteCostFlatDesc)
 	// TODO overflow-safe math?
 	gs.gasMeter.ConsumeGas(gs.gasConfig.WriteCostPerByte*types.Gas(len(value)), types.GasWritePerByteDesc)
+	if strings.Contains(string(key), "fwd") || strings.Contains(string(key), "rev") {
+		fmt.Printf("GasStore Set: %s %v\n", string(key), value)
+	}
 	gs.parent.Set(key, value)
 }
 

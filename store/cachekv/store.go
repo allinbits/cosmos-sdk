@@ -3,8 +3,10 @@ package cachekv
 import (
 	"bytes"
 	"container/list"
+	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"sync"
 
 	tmkv "github.com/tendermint/tendermint/libs/kv"
@@ -70,6 +72,10 @@ func (store *Store) Set(key []byte, value []byte) {
 	store.mtx.Lock()
 	defer store.mtx.Unlock()
 
+	if strings.Contains(string(key), "fwd") || strings.Contains(string(key), "rev") {
+		fmt.Printf("CacheStore Set: %s %v\n", string(key), value)
+	}
+
 	types.AssertValidKey(key)
 	types.AssertValidValue(value)
 
@@ -118,6 +124,11 @@ func (store *Store) Write() {
 		case cacheValue.value == nil:
 			// Skip, it already doesn't exist in parent.
 		default:
+
+			if strings.Contains(key, "fwd") || strings.Contains(key, "rev") {
+				fmt.Printf("CacheStore Parent Write: %s %v\n", key, cacheValue.value)
+			}
+
 			store.parent.Set([]byte(key), cacheValue.value)
 		}
 	}

@@ -1,7 +1,9 @@
 package dbadapter
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -37,6 +39,11 @@ func (dsa Store) Has(key []byte) bool {
 
 // Set wraps the underlying DB's Set method panicing on error.
 func (dsa Store) Set(key, value []byte) {
+	if _, ok := dsa.DB.(*dbm.MemDB); ok {
+		if strings.Contains(string(key), "fwd") || strings.Contains(string(key), "rev") {
+			fmt.Printf("GasStore Set: %s %v\n", string(key), value)
+		}
+	}
 	if err := dsa.DB.Set(key, value); err != nil {
 		panic(err)
 	}
