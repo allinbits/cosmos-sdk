@@ -3,6 +3,8 @@ package staking
 import (
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/types/module"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -228,4 +230,71 @@ func validateGenesisStateValidators(validators []types.Validator) (err error) {
 	}
 
 	return
+}
+
+func ReadGenesis(
+	ctx sdk.Context, keeper Keeper, accountKeeper types.AccountKeeper,
+	bankKeeper types.BankKeeper, reader module.ObjectReader,
+) (res []abci.ValidatorUpdate) {
+	reader.OnObject("params", func(reader module.ObjectReader) error {
+		var params Params
+		err := reader.ReadObject(&params)
+		if err != nil {
+			return err
+		}
+		keeper.SetParams(ctx, params)
+		return nil
+	})
+	reader.OnString("last_total_power", func(x string) error {
+		var power sdk.Int
+		err := power.UnmarshalJSON([]byte(x))
+		if err != nil {
+			return err
+		}
+		keeper.SetLastTotalPower(ctx, power)
+		return nil
+	})
+	reader.OnArray("validators", func(reader module.ArrayReader) error {
+		bondedTokens := sdk.ZeroInt()
+		notBondedTokens := sdk.ZeroInt()
+		for reader.More() {
+			var validator Validator
+			err := reader.ReadValue(&validator)
+			if err != nil {
+				return err
+			}
+
+			keeper.SetValidator(ctx, validator)
+
+			// Manually set indices for the first time
+			keeper.SetValidatorByConsAddr(ctx, validator)
+			keeper.SetValidatorByPowerIndex(ctx, validator)
+
+			// Call the creation hook if not exported
+			if !data.Exported {
+				keeper.AfterValidatorCreated(ctx, validator.OperatorAddress)
+			}
+
+			// update timeslice if necessary
+			if validator.IsUnbonding() {
+				keeper.InsertValidatorQueue(ctx, validator)
+			}
+
+			switch validator.GetStatus() {
+			case sdk.Bonded:
+				bondedTokens = bondedTokens.Add(validator.GetTokens())
+			case sdk.Unbonding, sdk.Unbonded:
+				notBondedTokens = notBondedTokens.Add(validator.GetTokens())
+			default:
+				panic("invalid validator status")
+			}
+		}
+		return nil
+	})
+	//Validators           Validators            `json:"validators" yaml:"validators"`
+	//LastValidatorPowers  []LastValidatorPower  `json:"last_validator_powers" yaml:"last_validator_powers"`
+	//Delegations          Delegations           `json:"delegations" yaml:"delegations"`
+	//UnbondingDelegations []UnbondingDelegation `json:"unbonding_delegations" yaml:"unbonding_delegations"`
+	//Redelegations        []Redelegation        `json:"redelegations" yaml:"redelegations"`
+	//Exported             bool                  `json:"exported" yaml:"exported"`
 }

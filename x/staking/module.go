@@ -26,9 +26,10 @@ import (
 )
 
 var (
-	_ module.AppModule           = AppModule{}
-	_ module.AppModuleBasic      = AppModuleBasic{}
-	_ module.AppModuleSimulation = AppModule{}
+	_ module.AppModule              = AppModule{}
+	_ module.AppModuleBasic         = AppModuleBasic{}
+	_ module.AppModuleSimulation    = AppModule{}
+	_ module.StreamingGenesisModule = AppModule{}
 )
 
 // AppModuleBasic defines the basic application module used by the staking module.
@@ -208,4 +209,19 @@ func (am AppModule) WeightedOperations(simState module.SimulationState) []simtyp
 	return simulation.WeightedOperations(
 		simState.AppParams, simState.Cdc, am.accountKeeper, am.bankKeeper, am.keeper,
 	)
+}
+
+func (am AppModule) DefaultGenesisStreaming(writer interface{}) {
+	panic("implement me")
+}
+
+func (am AppModule) ReadGenesis(ctx sdk.Context, reader module.ObjectReader) {
+}
+
+func (am AppModule) AfterReadGenesis(ctx sdk.Context) []abci.ValidatorUpdate {
+	panic("implement me")
+}
+
+func (am AppModule) WriteGenesis(ctx sdk.Context, writer interface{}) {
+	panic("implement me")
 }
