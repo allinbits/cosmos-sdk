@@ -5,6 +5,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+
+	"github.com/cosmos/cosmos-sdk/x/schema/keeper"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -292,4 +296,52 @@ func GetREDsByDelToValDstIndexKey(delAddr sdk.AccAddress, valDstAddr sdk.ValAddr
 // GetHistoricalInfoKey gets the key for the historical info
 func GetHistoricalInfoKey(height int64) []byte {
 	return append(HistoricalInfoKey, []byte(strconv.FormatInt(height, 10))...)
+}
+
+func Schema() []keeper.KeyDescriptor {
+	return []keeper.KeyDescriptor{
+		{
+			Name:   "LastValidatorPowerKey",
+			Prefix: LastValidatorPowerKey,
+			KeyParts: []keeper.KeyPart{
+				keeper.BytesKeyPart{
+					Name:        "Operator",
+					Description: "Validator operator address",
+					FixedWidth:  sdk.AddrLen,
+					GoType:      sdk.ValAddress{},
+				}},
+			ValueProtoType: &types.UInt64Value{},
+		}, {
+			Name:           "LastTotalPowerKey",
+			Description:    "",
+			Prefix:         LastTotalPowerKey,
+			KeyParts:       nil,
+			ValueProtoType: &sdk.IntProto{},
+		}, {
+			Name:        "ValidatorsKey",
+			Description: "",
+			Prefix:      ValidatorsKey,
+			KeyParts: []keeper.KeyPart{
+				keeper.BytesKeyPart{
+					Name:        "Operator",
+					Description: "Validator operator address",
+					FixedWidth:  sdk.AddrLen,
+					GoType:      sdk.ValAddress{},
+				}},
+			ValueProtoType: &Validator{},
+		}, {
+			Name:        "ValidatorsByConsAddrKey",
+			Description: "",
+			Prefix:      ValidatorsByConsAddrKey,
+			KeyParts: []keeper.KeyPart{
+				keeper.BytesKeyPart{
+					Name:        "Operator",
+					Description: "Validator consensus address",
+					FixedWidth:  sdk.AddrLen,
+					GoType:      sdk.ConsAddress{},
+				}},
+			ValueProtoType: &types.BytesValue{},
+			ValueGoType:    sdk.ValAddress{},
+		},
+	}
 }
