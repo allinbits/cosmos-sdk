@@ -47,3 +47,39 @@ type BytesKeyPart struct {
 	GoType            interface{}
 	FixedWidth        int
 }
+
+type StringKeyPart struct {
+	Name, Description string
+}
+
+type StringSeparatorKeyPart struct {
+	Separator string
+}
+
+var (
+	KeyDescriptorKeyPrefix = []byte{0x01}
+)
+
+func Schema() []KeyDescriptor {
+	return []KeyDescriptor{
+		{
+			Name:        "KeyDescriptor",
+			Description: "",
+			Prefix:      KeyDescriptorKeyPrefix,
+			KeyParts: []KeyPart{
+				StringKeyPart{
+					Name:        "store_name",
+					Description: "",
+				},
+				StringSeparatorKeyPart{
+					Separator: "/",
+				},
+				StringKeyPart{
+					Name:        "key_name",
+					Description: "",
+				},
+			},
+			ValueProtoType: &types.KeyDescriptor{},
+		},
+	}
+}

@@ -107,9 +107,11 @@ func (m *KeyDescriptor) GetValueType() string {
 }
 
 type KeyDescriptor_Part struct {
-	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	Type        string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	// Types that are valid to be assigned to Sum:
+	//	*KeyDescriptor_Part_Bytes_
+	//	*KeyDescriptor_Part_String_
+	//	*KeyDescriptor_Part_Separator_
+	Sum isKeyDescriptor_Part_Sum `protobuf_oneof:"sum"`
 }
 
 func (m *KeyDescriptor_Part) Reset()         { *m = KeyDescriptor_Part{} }
@@ -145,23 +147,215 @@ func (m *KeyDescriptor_Part) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_KeyDescriptor_Part proto.InternalMessageInfo
 
-func (m *KeyDescriptor_Part) GetName() string {
+type isKeyDescriptor_Part_Sum interface {
+	isKeyDescriptor_Part_Sum()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type KeyDescriptor_Part_Bytes_ struct {
+	Bytes *KeyDescriptor_Part_Bytes `protobuf:"bytes,1,opt,name=bytes,proto3,oneof" json:"bytes,omitempty"`
+}
+type KeyDescriptor_Part_String_ struct {
+	String_ *KeyDescriptor_Part_String `protobuf:"bytes,2,opt,name=string,proto3,oneof" json:"string,omitempty"`
+}
+type KeyDescriptor_Part_Separator_ struct {
+	Separator *KeyDescriptor_Part_Separator `protobuf:"bytes,3,opt,name=separator,proto3,oneof" json:"separator,omitempty"`
+}
+
+func (*KeyDescriptor_Part_Bytes_) isKeyDescriptor_Part_Sum()     {}
+func (*KeyDescriptor_Part_String_) isKeyDescriptor_Part_Sum()    {}
+func (*KeyDescriptor_Part_Separator_) isKeyDescriptor_Part_Sum() {}
+
+func (m *KeyDescriptor_Part) GetSum() isKeyDescriptor_Part_Sum {
+	if m != nil {
+		return m.Sum
+	}
+	return nil
+}
+
+func (m *KeyDescriptor_Part) GetBytes() *KeyDescriptor_Part_Bytes {
+	if x, ok := m.GetSum().(*KeyDescriptor_Part_Bytes_); ok {
+		return x.Bytes
+	}
+	return nil
+}
+
+func (m *KeyDescriptor_Part) GetString_() *KeyDescriptor_Part_String {
+	if x, ok := m.GetSum().(*KeyDescriptor_Part_String_); ok {
+		return x.String_
+	}
+	return nil
+}
+
+func (m *KeyDescriptor_Part) GetSeparator() *KeyDescriptor_Part_Separator {
+	if x, ok := m.GetSum().(*KeyDescriptor_Part_Separator_); ok {
+		return x.Separator
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*KeyDescriptor_Part) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*KeyDescriptor_Part_Bytes_)(nil),
+		(*KeyDescriptor_Part_String_)(nil),
+		(*KeyDescriptor_Part_Separator_)(nil),
+	}
+}
+
+type KeyDescriptor_Part_Bytes struct {
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	FixedWidth  uint32 `protobuf:"varint,3,opt,name=fixed_width,json=fixedWidth,proto3" json:"fixed_width,omitempty"`
+}
+
+func (m *KeyDescriptor_Part_Bytes) Reset()         { *m = KeyDescriptor_Part_Bytes{} }
+func (m *KeyDescriptor_Part_Bytes) String() string { return proto.CompactTextString(m) }
+func (*KeyDescriptor_Part_Bytes) ProtoMessage()    {}
+func (*KeyDescriptor_Part_Bytes) Descriptor() ([]byte, []int) {
+	return fileDescriptor_335ca074c797b8b4, []int{0, 0, 0}
+}
+func (m *KeyDescriptor_Part_Bytes) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *KeyDescriptor_Part_Bytes) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_KeyDescriptor_Part_Bytes.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *KeyDescriptor_Part_Bytes) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_KeyDescriptor_Part_Bytes.Merge(m, src)
+}
+func (m *KeyDescriptor_Part_Bytes) XXX_Size() int {
+	return m.Size()
+}
+func (m *KeyDescriptor_Part_Bytes) XXX_DiscardUnknown() {
+	xxx_messageInfo_KeyDescriptor_Part_Bytes.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_KeyDescriptor_Part_Bytes proto.InternalMessageInfo
+
+func (m *KeyDescriptor_Part_Bytes) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *KeyDescriptor_Part) GetDescription() string {
+func (m *KeyDescriptor_Part_Bytes) GetDescription() string {
 	if m != nil {
 		return m.Description
 	}
 	return ""
 }
 
-func (m *KeyDescriptor_Part) GetType() string {
+func (m *KeyDescriptor_Part_Bytes) GetFixedWidth() uint32 {
 	if m != nil {
-		return m.Type
+		return m.FixedWidth
+	}
+	return 0
+}
+
+type KeyDescriptor_Part_String struct {
+	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+}
+
+func (m *KeyDescriptor_Part_String) Reset()         { *m = KeyDescriptor_Part_String{} }
+func (m *KeyDescriptor_Part_String) String() string { return proto.CompactTextString(m) }
+func (*KeyDescriptor_Part_String) ProtoMessage()    {}
+func (*KeyDescriptor_Part_String) Descriptor() ([]byte, []int) {
+	return fileDescriptor_335ca074c797b8b4, []int{0, 0, 1}
+}
+func (m *KeyDescriptor_Part_String) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *KeyDescriptor_Part_String) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_KeyDescriptor_Part_String.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *KeyDescriptor_Part_String) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_KeyDescriptor_Part_String.Merge(m, src)
+}
+func (m *KeyDescriptor_Part_String) XXX_Size() int {
+	return m.Size()
+}
+func (m *KeyDescriptor_Part_String) XXX_DiscardUnknown() {
+	xxx_messageInfo_KeyDescriptor_Part_String.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_KeyDescriptor_Part_String proto.InternalMessageInfo
+
+func (m *KeyDescriptor_Part_String) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *KeyDescriptor_Part_String) GetDescription() string {
+	if m != nil {
+		return m.Description
+	}
+	return ""
+}
+
+type KeyDescriptor_Part_Separator struct {
+	Separator string `protobuf:"bytes,1,opt,name=separator,proto3" json:"separator,omitempty"`
+}
+
+func (m *KeyDescriptor_Part_Separator) Reset()         { *m = KeyDescriptor_Part_Separator{} }
+func (m *KeyDescriptor_Part_Separator) String() string { return proto.CompactTextString(m) }
+func (*KeyDescriptor_Part_Separator) ProtoMessage()    {}
+func (*KeyDescriptor_Part_Separator) Descriptor() ([]byte, []int) {
+	return fileDescriptor_335ca074c797b8b4, []int{0, 0, 2}
+}
+func (m *KeyDescriptor_Part_Separator) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *KeyDescriptor_Part_Separator) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_KeyDescriptor_Part_Separator.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *KeyDescriptor_Part_Separator) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_KeyDescriptor_Part_Separator.Merge(m, src)
+}
+func (m *KeyDescriptor_Part_Separator) XXX_Size() int {
+	return m.Size()
+}
+func (m *KeyDescriptor_Part_Separator) XXX_DiscardUnknown() {
+	xxx_messageInfo_KeyDescriptor_Part_Separator.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_KeyDescriptor_Part_Separator proto.InternalMessageInfo
+
+func (m *KeyDescriptor_Part_Separator) GetSeparator() string {
+	if m != nil {
+		return m.Separator
 	}
 	return ""
 }
@@ -169,30 +363,41 @@ func (m *KeyDescriptor_Part) GetType() string {
 func init() {
 	proto.RegisterType((*KeyDescriptor)(nil), "cosmos_sdk.x.schema.v1.KeyDescriptor")
 	proto.RegisterType((*KeyDescriptor_Part)(nil), "cosmos_sdk.x.schema.v1.KeyDescriptor.Part")
+	proto.RegisterType((*KeyDescriptor_Part_Bytes)(nil), "cosmos_sdk.x.schema.v1.KeyDescriptor.Part.Bytes")
+	proto.RegisterType((*KeyDescriptor_Part_String)(nil), "cosmos_sdk.x.schema.v1.KeyDescriptor.Part.String")
+	proto.RegisterType((*KeyDescriptor_Part_Separator)(nil), "cosmos_sdk.x.schema.v1.KeyDescriptor.Part.Separator")
 }
 
 func init() { proto.RegisterFile("x/schema/types/types.proto", fileDescriptor_335ca074c797b8b4) }
 
 var fileDescriptor_335ca074c797b8b4 = []byte{
-	// 283 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0xaa, 0xd0, 0x2f, 0x4e,
-	0xce, 0x48, 0xcd, 0x4d, 0xd4, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0x86, 0x90, 0x7a, 0x05, 0x45, 0xf9,
-	0x25, 0xf9, 0x42, 0x62, 0xc9, 0xf9, 0xc5, 0xb9, 0xf9, 0xc5, 0xf1, 0xc5, 0x29, 0xd9, 0x7a, 0x15,
-	0x7a, 0x10, 0x65, 0x7a, 0x65, 0x86, 0x4a, 0xcb, 0x98, 0xb8, 0x78, 0xbd, 0x53, 0x2b, 0x5d, 0x52,
-	0x8b, 0x93, 0x8b, 0x32, 0x0b, 0x4a, 0xf2, 0x8b, 0x84, 0x84, 0xb8, 0x58, 0xf2, 0x12, 0x73, 0x53,
-	0x25, 0x18, 0x15, 0x18, 0x35, 0x38, 0x83, 0xc0, 0x6c, 0x21, 0x05, 0x2e, 0xee, 0x14, 0xa8, 0x8a,
-	0xcc, 0xfc, 0x3c, 0x09, 0x26, 0xb0, 0x14, 0xb2, 0x90, 0x90, 0x08, 0x17, 0x6b, 0x71, 0x49, 0x7e,
-	0x51, 0xaa, 0x04, 0x0b, 0x58, 0x0e, 0xc2, 0x11, 0x12, 0xe3, 0x62, 0x2b, 0x28, 0x4a, 0x4d, 0xcb,
-	0xac, 0x90, 0x60, 0x55, 0x60, 0xd4, 0xe0, 0x09, 0x82, 0xf2, 0x84, 0x1c, 0xb8, 0x58, 0x0b, 0x12,
-	0x8b, 0x4a, 0x8a, 0x25, 0xd8, 0x14, 0x98, 0x35, 0xb8, 0x8d, 0xb4, 0xf4, 0xb0, 0xbb, 0x4e, 0x0f,
-	0xc5, 0x65, 0x7a, 0x01, 0x89, 0x45, 0x25, 0x41, 0x10, 0x8d, 0x42, 0xb2, 0x5c, 0x5c, 0x65, 0x89,
-	0x39, 0xa5, 0xa9, 0xf1, 0x20, 0x4f, 0x4a, 0xb0, 0x83, 0x2d, 0xe5, 0x04, 0x8b, 0x84, 0x54, 0x16,
-	0xa4, 0x4a, 0x05, 0x70, 0xb1, 0x80, 0x54, 0x93, 0xe9, 0x19, 0x21, 0x2e, 0x16, 0xb0, 0xb1, 0xcc,
-	0x10, 0x5d, 0x20, 0xb6, 0x93, 0xeb, 0x89, 0x47, 0x72, 0x8c, 0x17, 0x1e, 0xc9, 0x31, 0x3e, 0x78,
-	0x24, 0xc7, 0x38, 0xe1, 0xb1, 0x1c, 0xc3, 0x85, 0xc7, 0x72, 0x0c, 0x37, 0x1e, 0xcb, 0x31, 0x44,
-	0x69, 0xa7, 0x67, 0x96, 0x64, 0x94, 0x26, 0xe9, 0x25, 0xe7, 0xe7, 0xea, 0x43, 0xfc, 0x01, 0xa5,
-	0x74, 0x8b, 0x53, 0xb2, 0xf5, 0x51, 0xe3, 0x24, 0x89, 0x0d, 0x1c, 0x1d, 0xc6, 0x80, 0x00, 0x00,
-	0x00, 0xff, 0xff, 0x8a, 0x02, 0x93, 0x51, 0xac, 0x01, 0x00, 0x00,
+	// 402 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x53, 0xc1, 0xaa, 0xd3, 0x40,
+	0x14, 0x4d, 0x4c, 0x13, 0xc9, 0x8d, 0xdd, 0x0c, 0x52, 0x42, 0xd0, 0x18, 0x5c, 0x55, 0xc5, 0x89,
+	0xad, 0xae, 0x45, 0x8a, 0x42, 0xa0, 0x1b, 0x89, 0x05, 0xc1, 0x85, 0x25, 0x4d, 0xa6, 0x6d, 0xa8,
+	0xe9, 0x84, 0x99, 0x69, 0x4d, 0xfe, 0xc2, 0x0f, 0xf0, 0x77, 0x04, 0x97, 0x5d, 0xba, 0x94, 0xf6,
+	0x47, 0x24, 0x33, 0xf1, 0xb5, 0x85, 0xb7, 0x78, 0xed, 0x26, 0xc9, 0x9c, 0xb9, 0xe7, 0xdc, 0x73,
+	0x6e, 0xb8, 0xe0, 0x55, 0x21, 0x4f, 0x97, 0xa4, 0x48, 0x42, 0x51, 0x97, 0x84, 0xab, 0x27, 0x2e,
+	0x19, 0x15, 0x14, 0xf5, 0x52, 0xca, 0x0b, 0xca, 0xa7, 0x3c, 0x5b, 0xe1, 0x0a, 0xab, 0x32, 0xbc,
+	0x1d, 0x3c, 0xfd, 0x69, 0x42, 0x77, 0x4c, 0xea, 0xf7, 0x84, 0xa7, 0x2c, 0x2f, 0x05, 0x65, 0x08,
+	0x41, 0x67, 0x9d, 0x14, 0xc4, 0xd5, 0x03, 0xbd, 0x6f, 0xc7, 0xf2, 0x1b, 0x05, 0xe0, 0x64, 0x6d,
+	0x45, 0x4e, 0xd7, 0xee, 0x3d, 0x79, 0x75, 0x0a, 0xa1, 0x87, 0x60, 0x72, 0x41, 0x19, 0x71, 0x3b,
+	0xf2, 0x4e, 0x1d, 0x50, 0x0f, 0xac, 0x92, 0x91, 0x79, 0x5e, 0xb9, 0x66, 0xa0, 0xf7, 0x1f, 0xc4,
+	0xed, 0x09, 0xbd, 0x03, 0xb3, 0x4c, 0x98, 0xe0, 0xae, 0x15, 0x18, 0x7d, 0x67, 0xf8, 0x1c, 0xdf,
+	0xee, 0x0e, 0x9f, 0x39, 0xc3, 0x1f, 0x13, 0x26, 0x62, 0x45, 0x44, 0x8f, 0x01, 0xb6, 0xc9, 0xb7,
+	0x0d, 0x99, 0x36, 0x21, 0xdd, 0xfb, 0xb2, 0xa9, 0x2d, 0x91, 0x49, 0x5d, 0x12, 0xef, 0x97, 0x01,
+	0x9d, 0xa6, 0x1c, 0x45, 0x60, 0xce, 0x6a, 0x41, 0xb8, 0x8c, 0xe3, 0x0c, 0x5f, 0xdd, 0xbd, 0x13,
+	0x1e, 0x35, 0xbc, 0x48, 0x8b, 0x95, 0x00, 0x1a, 0x83, 0xc5, 0x05, 0xcb, 0xd7, 0x0b, 0x19, 0xdf,
+	0x19, 0x0e, 0x2e, 0x90, 0xfa, 0x24, 0x89, 0x91, 0x16, 0xb7, 0x12, 0x68, 0x02, 0x36, 0x27, 0x65,
+	0xc2, 0x12, 0x41, 0x99, 0x6b, 0x48, 0xbd, 0x37, 0x97, 0xe8, 0xfd, 0xe7, 0x46, 0x5a, 0x7c, 0x14,
+	0xf2, 0xbe, 0x82, 0x29, 0x4d, 0x5f, 0xf9, 0x0f, 0x9f, 0x80, 0x33, 0xcf, 0x2b, 0x92, 0x4d, 0xbf,
+	0xe7, 0x99, 0x58, 0x4a, 0x5b, 0xdd, 0x18, 0x24, 0xf4, 0xb9, 0x41, 0xbc, 0xb7, 0x60, 0xa9, 0x24,
+	0xd7, 0x35, 0xf0, 0x9e, 0x81, 0x7d, 0xe3, 0x1c, 0x3d, 0x3a, 0x1d, 0x81, 0xd2, 0x39, 0x02, 0x23,
+	0x13, 0x0c, 0xbe, 0x29, 0x46, 0x1f, 0x7e, 0xef, 0x7d, 0x7d, 0xb7, 0xf7, 0xf5, 0xbf, 0x7b, 0x5f,
+	0xff, 0x71, 0xf0, 0xb5, 0xdd, 0xc1, 0xd7, 0xfe, 0x1c, 0x7c, 0xed, 0xcb, 0x8b, 0x45, 0x2e, 0x96,
+	0x9b, 0x19, 0x4e, 0x69, 0x11, 0xaa, 0xc1, 0xb5, 0xaf, 0x97, 0x3c, 0x5b, 0x85, 0xe7, 0x9b, 0x30,
+	0xb3, 0xe4, 0x12, 0xbc, 0xfe, 0x17, 0x00, 0x00, 0xff, 0xff, 0x1a, 0x22, 0x67, 0x3c, 0x22, 0x03,
+	0x00, 0x00,
 }
 
 func (m *KeyDescriptor) Marshal() (dAtA []byte, err error) {
@@ -287,12 +492,105 @@ func (m *KeyDescriptor_Part) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.Type) > 0 {
-		i -= len(m.Type)
-		copy(dAtA[i:], m.Type)
-		i = encodeVarintTypes(dAtA, i, uint64(len(m.Type)))
+	if m.Sum != nil {
+		{
+			size := m.Sum.Size()
+			i -= size
+			if _, err := m.Sum.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *KeyDescriptor_Part_Bytes_) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *KeyDescriptor_Part_Bytes_) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Bytes != nil {
+		{
+			size, err := m.Bytes.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTypes(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+func (m *KeyDescriptor_Part_String_) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *KeyDescriptor_Part_String_) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.String_ != nil {
+		{
+			size, err := m.String_.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTypes(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+func (m *KeyDescriptor_Part_Separator_) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *KeyDescriptor_Part_Separator_) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.Separator != nil {
+		{
+			size, err := m.Separator.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintTypes(dAtA, i, uint64(size))
+		}
 		i--
 		dAtA[i] = 0x1a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *KeyDescriptor_Part_Bytes) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *KeyDescriptor_Part_Bytes) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *KeyDescriptor_Part_Bytes) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.FixedWidth != 0 {
+		i = encodeVarintTypes(dAtA, i, uint64(m.FixedWidth))
+		i--
+		dAtA[i] = 0x18
 	}
 	if len(m.Description) > 0 {
 		i -= len(m.Description)
@@ -305,6 +603,73 @@ func (m *KeyDescriptor_Part) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i -= len(m.Name)
 		copy(dAtA[i:], m.Name)
 		i = encodeVarintTypes(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *KeyDescriptor_Part_String) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *KeyDescriptor_Part_String) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *KeyDescriptor_Part_String) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Description) > 0 {
+		i -= len(m.Description)
+		copy(dAtA[i:], m.Description)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Description)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Name) > 0 {
+		i -= len(m.Name)
+		copy(dAtA[i:], m.Name)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Name)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *KeyDescriptor_Part_Separator) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *KeyDescriptor_Part_Separator) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *KeyDescriptor_Part_Separator) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Separator) > 0 {
+		i -= len(m.Separator)
+		copy(dAtA[i:], m.Separator)
+		i = encodeVarintTypes(dAtA, i, uint64(len(m.Separator)))
 		i--
 		dAtA[i] = 0xa
 	}
@@ -363,6 +728,54 @@ func (m *KeyDescriptor_Part) Size() (n int) {
 	}
 	var l int
 	_ = l
+	if m.Sum != nil {
+		n += m.Sum.Size()
+	}
+	return n
+}
+
+func (m *KeyDescriptor_Part_Bytes_) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Bytes != nil {
+		l = m.Bytes.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *KeyDescriptor_Part_String_) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.String_ != nil {
+		l = m.String_.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *KeyDescriptor_Part_Separator_) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Separator != nil {
+		l = m.Separator.Size()
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+func (m *KeyDescriptor_Part_Bytes) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
 	l = len(m.Name)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
@@ -371,7 +784,36 @@ func (m *KeyDescriptor_Part) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
-	l = len(m.Type)
+	if m.FixedWidth != 0 {
+		n += 1 + sovTypes(uint64(m.FixedWidth))
+	}
+	return n
+}
+
+func (m *KeyDescriptor_Part_String) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Name)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	l = len(m.Description)
+	if l > 0 {
+		n += 1 + l + sovTypes(uint64(l))
+	}
+	return n
+}
+
+func (m *KeyDescriptor_Part_Separator) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Separator)
 	if l > 0 {
 		n += 1 + l + sovTypes(uint64(l))
 	}
@@ -664,6 +1106,164 @@ func (m *KeyDescriptor_Part) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bytes", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &KeyDescriptor_Part_Bytes{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Sum = &KeyDescriptor_Part_Bytes_{v}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field String_", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &KeyDescriptor_Part_String{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Sum = &KeyDescriptor_Part_String_{v}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Separator", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &KeyDescriptor_Part_Separator{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Sum = &KeyDescriptor_Part_Separator_{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *KeyDescriptor_Part_Bytes) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Bytes: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Bytes: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
 			}
 			var stringLen uint64
@@ -727,8 +1327,80 @@ func (m *KeyDescriptor_Part) Unmarshal(dAtA []byte) error {
 			m.Description = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FixedWidth", wireType)
+			}
+			m.FixedWidth = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FixedWidth |= uint32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *KeyDescriptor_Part_String) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: String: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: String: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -756,7 +1428,124 @@ func (m *KeyDescriptor_Part) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Type = string(dAtA[iNdEx:postIndex])
+			m.Name = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Description", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Description = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTypes(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *KeyDescriptor_Part_Separator) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTypes
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Separator: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Separator: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Separator", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTypes
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTypes
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthTypes
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Separator = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

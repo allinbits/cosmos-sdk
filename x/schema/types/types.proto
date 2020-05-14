@@ -13,8 +13,25 @@ message KeyDescriptor {
     string value_type = 7;
 
     message Part {
-        string name = 1;
-        string description = 2;
-        string type = 3;
+        oneof sum {
+            Bytes bytes = 1;
+            String string = 2;
+            Separator separator = 3;
+        }
+
+        message Bytes {
+          string name = 1;
+          string description = 2;
+          uint32 fixed_width = 3;
+        }
+
+        message String {
+            string name = 1;
+            string description = 2;
+        }
+
+        message Separator {
+            string separator = 1;
+        }
     }
 }
