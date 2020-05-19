@@ -1,8 +1,10 @@
 package cli
 
 import (
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"path/filepath"
 	"testing"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/spf13/viper"
@@ -22,6 +24,11 @@ func TestGetBatchSignCommand(t *testing.T) {
 
 	viper.Set(flags.FlagHome, tempDir)
 	viper.Set(flags.FlagKeyringBackend, keyring.BackendTest)
+
+	cmd.SetArgs([]string{
+		"./testdata/txs.json",
+		filepath.Join(tempDir, "outputfile"),
+	})
 
 	err := cmd.Execute()
 	require.NoError(t, err)

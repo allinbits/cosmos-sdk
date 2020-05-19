@@ -1,13 +1,17 @@
 package cli
 
 import (
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/cosmos/cosmos-sdk/x/auth/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 )
 
 func GetBatchSignCommand(codec *codec.Codec) *cobra.Command {
@@ -21,6 +25,7 @@ produce a file of JSON encoded StdSignatures, one per line.
 This command is intended to work offline for security purposes.`,
 		PreRun: preSignCmd,
 		RunE:   makeBatchSignCmd(codec),
+		Args:   cobra.ExactArgs(2),
 	}
 
 	return flags.PostCommands(cmd)[0]
@@ -33,6 +38,13 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 		if err != nil {
 			return err
 		}
+
+		txsToSign, err := client.ReadStdTxsFromFile(cdc, args[0])
+		if err != nil {
+			return errors.Wrap(err, "error extracting txs from file")
+		}
+
+		fmt.Printf("%v\n", txsToSign)
 
 		return nil
 	}
