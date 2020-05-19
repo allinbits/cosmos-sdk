@@ -253,7 +253,33 @@ func ReadStdTxFromFile(cdc *codec.Codec, filename string) (stdTx authtypes.StdTx
 
 // ReadStdTxsFromFile reads a list of transactions from a file
 func ReadStdTxsFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdTx, error) {
-	return nil, nil
+	bz, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(bz), "\n")
+
+	return buildTxsFromJsonLines(cdc, lines)
+}
+
+func buildTxsFromJsonLines(cdc *codec.Codec, jsonTxs []string) ([]authtypes.StdTx, error) {
+	var txs []authtypes.StdTx
+
+	for _, jsonTx := range jsonTxs {
+		if len(jsonTx) == 0 {
+			break
+		}
+
+		var tx authtypes.StdTx
+		err := cdc.UnmarshalJSON([]byte(jsonTx), &tx)
+		if err != nil {
+			return nil, err
+		}
+		txs = append(txs, tx)
+	}
+
+	return txs, nil
 }
 
 func populateAccountFromState(
