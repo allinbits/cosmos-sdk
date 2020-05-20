@@ -4,8 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/spf13/viper"
 
@@ -23,7 +21,6 @@ func TestGetBatchSignCommand(t *testing.T) {
 	t.Cleanup(cleanFunc)
 
 	viper.Set(flags.FlagHome, tempDir)
-	viper.Set(flags.FlagKeyringBackend, keyring.BackendTest)
 
 	cmd.SetArgs([]string{
 		"./testdata/txs.json",

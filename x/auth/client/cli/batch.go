@@ -3,10 +3,12 @@ package cli
 import (
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/client/keys"
+
+	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+
 	"github.com/pkg/errors"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -33,13 +35,12 @@ This command is intended to work offline for security purposes.`,
 
 func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		_, err := keyring.New(sdk.KeyringServiceName(),
-			viper.GetString(flags.FlagKeyringBackend), viper.GetString(flags.FlagHome), cmd.InOrStdin())
+		_, err := keys.NewKeyBaseFromDir(viper.GetString(flags.FlagHome))
 		if err != nil {
 			return err
 		}
 
-		txsToSign, err := client.ReadStdTxsFromFile(cdc, args[0])
+		txsToSign, err := utils.ReadStdTxsFromFile(cdc, args[0])
 		if err != nil {
 			return errors.Wrap(err, "error extracting txs from file")
 		}
