@@ -7,7 +7,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cosmos/cosmos-sdk/tests"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 
@@ -102,13 +104,35 @@ func TestReadStdTxFromFile(t *testing.T) {
 
 	// Write it to the file
 	encodedTx, _ := cdc.MarshalJSON(stdTx)
-	jsonTxFile := writeToNewTempFile(t, string(encodedTx))
-	defer os.Remove(jsonTxFile.Name())
+	dir, cleanup := tests.NewTestCaseDir(t)
+	jsonTxFile := writeToNewTempFile(t, dir, string(encodedTx))
+	t.Cleanup(cleanup)
 
 	// Read it back
 	decodedTx, err := ReadStdTxFromFile(cdc, jsonTxFile.Name())
 	require.NoError(t, err)
 	require.Equal(t, decodedTx.Memo, "foomemo")
+}
+
+func TestReadStdTxsFromFile(t *testing.T) {
+	//cdc := codec.New()
+
+	var txs []authtypes.StdTx
+
+	// Build some Transactions
+	for i := 0; i < 2; i++ {
+		txs = append(
+			txs,
+			authtypes.NewStdTx([]sdk.Msg{}, authtypes.NewStdFee(50000, sdk.Coins{sdk.NewInt64Coin("atom", 150)}), []authtypes.StdSignature{}, "foomemo"),
+		)
+	}
+
+	_, cleanup := tests.NewTestCaseDir(t)
+	t.Cleanup(cleanup)
+
+	//decodedTx, err := ReadStdTxFromFile(cdc, jsonTxFile.Name())
+	//require.NoError(t, err)
+	//require.Equal(t, decodedTx.Memo, "foomemo")
 }
 
 func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder) {
@@ -122,8 +146,8 @@ func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder)
 	require.Equal(t, defaultEncoderBytes, encoderBytes)
 }
 
-func writeToNewTempFile(t *testing.T, data string) *os.File {
-	fp, err := ioutil.TempFile(os.TempDir(), "client_tx_test")
+func writeToNewTempFile(t *testing.T, filepath string, data string) *os.File {
+	fp, err := ioutil.TempFile(filepath, "client_tx_test")
 	require.NoError(t, err)
 
 	_, err = fp.WriteString(data)

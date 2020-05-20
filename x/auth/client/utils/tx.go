@@ -248,6 +248,11 @@ func ReadStdTxFromFile(cdc *codec.Codec, filename string) (stdTx authtypes.StdTx
 	return
 }
 
+// ReadStdTxsFromFile reads a list of transactions from a file
+func ReadStdTxsFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdTx, error) {
+	return nil, nil
+}
+
 func populateAccountFromState(
 	txBldr authtypes.TxBuilder, cliCtx context.CLIContext, addr sdk.AccAddress,
 ) (authtypes.TxBuilder, error) {
