@@ -122,33 +122,11 @@ func TestReadStdTxsFromFile(t *testing.T) {
 	cdc := codec.New()
 	sdk.RegisterCodec(cdc)
 
-	var txs []authtypes.StdTx
-
-	// Build some Transactions
-	for i := 0; i < 2; i++ {
-		txs = append(
-			txs,
-			authtypes.NewStdTx([]sdk.Msg{}, authtypes.NewStdFee(50000, sdk.Coins{sdk.NewInt64Coin("atom", 150)}), []authtypes.StdSignature{}, fmt.Sprintf("foomemo%d", i)),
-		)
-	}
-
-	tempDir, cleanup := tests.NewTestCaseDir(t)
-	t.Cleanup(cleanup)
-	tempFile := newTempFile(t, tempDir)
-
-	// Write it to the file
-	for _, tx := range txs {
-		encodedTx, err := cdc.MarshalJSON(&tx)
-		require.NoError(t, err)
-		writeToFile(t, tempFile, string(encodedTx))
-	}
-
-	txsFromFile, err := ReadStdTxsFromFile(cdc, tempFile.Name())
+	txsFromFile, err := ReadStdTxsFromFile(cdc, "./testdata/txs")
 	require.NoError(t, err)
 
-	for i, txFromFile := range txsFromFile {
-		require.Equal(t, txFromFile.Memo, txs[i].Memo)
-	}
+	require.Equal(t, uint64(37), txsFromFile[0].Sequence)
+	require.Equal(t, uint64(38), txsFromFile[1].Sequence)
 }
 
 func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder) {

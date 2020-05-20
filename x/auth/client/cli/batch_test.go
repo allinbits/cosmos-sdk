@@ -4,13 +4,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/spf13/viper"
-
-	"github.com/cosmos/cosmos-sdk/tests"
-
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/go-amino"
+
+	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/tests"
 )
 
 func TestGetBatchSignCommand(t *testing.T) {

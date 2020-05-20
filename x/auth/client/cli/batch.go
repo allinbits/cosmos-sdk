@@ -3,17 +3,15 @@ package cli
 import (
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/client/keys"
-
-	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
-
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/cosmos/cosmos-sdk/codec"
+	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 )
 
 func GetBatchSignCommand(codec *codec.Codec) *cobra.Command {

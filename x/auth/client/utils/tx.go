@@ -250,7 +250,7 @@ func ReadStdTxFromFile(cdc *codec.Codec, filename string) (stdTx authtypes.StdTx
 }
 
 // ReadStdTxsFromFile reads a list of transactions from a file
-func ReadStdTxsFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdTx, error) {
+func ReadStdTxsFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdSignDoc, error) {
 	bz, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -261,15 +261,15 @@ func ReadStdTxsFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdTx, e
 	return buildTxsFromJsonLines(cdc, lines)
 }
 
-func buildTxsFromJsonLines(cdc *codec.Codec, jsonTxs []string) ([]authtypes.StdTx, error) {
-	var txs []authtypes.StdTx
+func buildTxsFromJsonLines(cdc *codec.Codec, jsonTxs []string) ([]authtypes.StdSignDoc, error) {
+	var txs []authtypes.StdSignDoc
 
 	for _, jsonTx := range jsonTxs {
 		if len(jsonTx) == 0 {
 			break
 		}
 
-		var tx authtypes.StdTx
+		var tx authtypes.StdSignDoc
 		err := cdc.UnmarshalJSON([]byte(jsonTx), &tx)
 		if err != nil {
 			return nil, err
