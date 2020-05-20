@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -103,19 +104,23 @@ func TestReadStdTxFromFile(t *testing.T) {
 	stdTx := authtypes.NewStdTx([]sdk.Msg{}, fee, []authtypes.StdSignature{}, "foomemo")
 
 	// Write it to the file
-	encodedTx, _ := cdc.MarshalJSON(stdTx)
 	dir, cleanup := tests.NewTestCaseDir(t)
-	jsonTxFile := writeToNewTempFile(t, dir, string(encodedTx))
 	t.Cleanup(cleanup)
+	tempFile := newTempFile(t, dir)
+
+	encodedTx, err := cdc.MarshalJSON(stdTx)
+	require.NoError(t, err)
+	writeToFile(t, tempFile, string(encodedTx))
 
 	// Read it back
-	decodedTx, err := ReadStdTxFromFile(cdc, jsonTxFile.Name())
+	decodedTx, err := ReadStdTxFromFile(cdc, tempFile.Name())
 	require.NoError(t, err)
 	require.Equal(t, decodedTx.Memo, "foomemo")
 }
 
 func TestReadStdTxsFromFile(t *testing.T) {
-	//cdc := codec.New()
+	cdc := codec.New()
+	sdk.RegisterCodec(cdc)
 
 	var txs []authtypes.StdTx
 
@@ -123,16 +128,27 @@ func TestReadStdTxsFromFile(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		txs = append(
 			txs,
-			authtypes.NewStdTx([]sdk.Msg{}, authtypes.NewStdFee(50000, sdk.Coins{sdk.NewInt64Coin("atom", 150)}), []authtypes.StdSignature{}, "foomemo"),
+			authtypes.NewStdTx([]sdk.Msg{}, authtypes.NewStdFee(50000, sdk.Coins{sdk.NewInt64Coin("atom", 150)}), []authtypes.StdSignature{}, fmt.Sprintf("foomemo%d", i)),
 		)
 	}
 
-	_, cleanup := tests.NewTestCaseDir(t)
+	tempDir, cleanup := tests.NewTestCaseDir(t)
 	t.Cleanup(cleanup)
+	tempFile := newTempFile(t, tempDir)
 
-	//decodedTx, err := ReadStdTxFromFile(cdc, jsonTxFile.Name())
-	//require.NoError(t, err)
-	//require.Equal(t, decodedTx.Memo, "foomemo")
+	// Write it to the file
+	for _, tx := range txs {
+		encodedTx, err := cdc.MarshalJSON(&tx)
+		require.NoError(t, err)
+		writeToFile(t, tempFile, string(encodedTx))
+	}
+
+	txsFromFile, err := ReadStdTxsFromFile(cdc, tempFile.Name())
+	require.NoError(t, err)
+
+	for i, txFromFile := range txsFromFile {
+		require.Equal(t, txFromFile.Memo, txs[i].Memo)
+	}
 }
 
 func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder) {
@@ -146,14 +162,16 @@ func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder)
 	require.Equal(t, defaultEncoderBytes, encoderBytes)
 }
 
-func writeToNewTempFile(t *testing.T, filepath string, data string) *os.File {
+func newTempFile(t *testing.T, filepath string) *os.File {
 	fp, err := ioutil.TempFile(filepath, "client_tx_test")
 	require.NoError(t, err)
 
-	_, err = fp.WriteString(data)
-	require.NoError(t, err)
-
 	return fp
+}
+
+func writeToFile(t *testing.T, fp *os.File, data string) {
+	_, err := fp.WriteString(fmt.Sprintf("%s\n", data))
+	require.NoError(t, err)
 }
 
 func makeCodec() *codec.Codec {
