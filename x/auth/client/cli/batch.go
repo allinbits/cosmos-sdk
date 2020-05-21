@@ -18,6 +18,10 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 )
 
+const (
+	FlagPassPhrase = "passphrase"
+)
+
 func GetBatchSignCommand(codec *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sign-batch [in-file] [out-file]",
@@ -36,6 +40,8 @@ This command is intended to work offline for security purposes.`,
 		FlagMultisig, "",
 		"Address of the multisig account on behalf of which the transaction shall be signed",
 	)
+
+	cmd.Flags().String(FlagPassPhrase, "", "The passphrase of the key needed to sign the transaction.")
 
 	return flags.PostCommands(cmd)[0]
 }
@@ -67,8 +73,9 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 			return errors.Wrap(err, "error extracting txs from file")
 		}
 
+		passphrase := viper.GetString(FlagPassPhrase)
 		for _, tx := range txs {
-			_, err = types.MakeSignature(nil, from.GetName(), "", tx)
+			_, err = types.MakeSignature(nil, from.GetName(), passphrase, tx)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error signing tx %d", tx.Sequence))
 			}

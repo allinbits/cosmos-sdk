@@ -5,14 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cosmos/go-bip39"
-
-	"github.com/cosmos/cosmos-sdk/x/auth/client/cli"
-
-	"github.com/cosmos/cosmos-sdk/x/staking"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/go-amino"
@@ -22,8 +14,14 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/keys"
 	keys2 "github.com/cosmos/cosmos-sdk/crypto/keys"
 	"github.com/cosmos/cosmos-sdk/tests"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/auth/client/cli"
+	"github.com/cosmos/cosmos-sdk/x/staking"
+	"github.com/cosmos/go-bip39"
 	"github.com/tendermint/tendermint/crypto"
 )
+
+const passphrase = "012345678"
 
 func TestGetBatchSignCommand(t *testing.T) {
 	cdc := amino.NewCodec()
@@ -45,6 +43,8 @@ func TestGetBatchSignCommand(t *testing.T) {
 	viper.Set(flags.FlagHome, tempDir)
 	viper.Set(flags.FlagFrom, "acc1")
 	viper.Set(cli.FlagMultisig, multiInfo.GetAddress())
+	viper.Set(cli.FlagPassPhrase, passphrase)
+
 	cmd.SetArgs([]string{
 		"./testdata/txs.json",
 		filepath.Join(tempDir, "outputfile"),
@@ -62,14 +62,6 @@ func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKe
 
 	var pubKeys []crypto.PubKey
 	for i := 0; i < 4; i++ {
-		//_, seed, _ := kb.CreateMnemonic(
-		//	fmt.Sprintf("acc%d", i),
-		//	keys2.English,
-		//	"",
-		//	keys2.Secp256k1,
-		//)
-
-		// read entropy seed straight from crypto.Rand and convert to mnemonic
 		entropySeed, err := bip39.NewEntropy(256)
 		if err != nil {
 			return nil, nil, err
@@ -84,7 +76,7 @@ func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKe
 			fmt.Sprintf("acc%d", i),
 			mnemonic,
 			"",
-			"",
+			passphrase,
 			0,
 			0,
 		)

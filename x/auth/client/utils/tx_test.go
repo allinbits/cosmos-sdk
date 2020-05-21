@@ -8,6 +8,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cosmos/cosmos-sdk/x/staking/types"
+
 	"github.com/cosmos/cosmos-sdk/tests"
 	"github.com/stretchr/testify/assert"
 
@@ -121,6 +123,7 @@ func TestReadStdTxFromFile(t *testing.T) {
 func TestReadStdTxsFromFile(t *testing.T) {
 	cdc := codec.New()
 	sdk.RegisterCodec(cdc)
+	types.RegisterCodec(cdc)
 
 	txsFromFile, err := ReadStdTxsFromFile(cdc, "./testdata/txs")
 	require.NoError(t, err)
