@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/x/auth/types"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/pkg/errors"
@@ -31,7 +33,7 @@ This command is intended to work offline for security purposes.`,
 	}
 
 	cmd.Flags().String(
-		flagMultisig, "",
+		FlagMultisig, "",
 		"Address of the multisig account on behalf of which the transaction shall be signed",
 	)
 
@@ -45,9 +47,9 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 			return err
 		}
 
-		multisigAddrStr := viper.GetString(flagMultisig)
+		multisigAddrStr := viper.GetString(FlagMultisig)
 		if multisigAddrStr == "" {
-			return fmt.Errorf("only multisig signature is supported, provide it with %s flag", flagMultisig)
+			return fmt.Errorf("only multisig signature is supported, provide it with %s flag", FlagMultisig)
 		}
 
 		_, err = sdk.AccAddressFromBech32(multisigAddrStr)
@@ -55,14 +57,21 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 			return err
 		}
 
-		_, err = kb.Get(viper.GetString(flags.FlagFrom))
+		from, err := kb.Get(viper.GetString(flags.FlagFrom))
 		if err != nil {
 			return errors.Wrap(err, "key not found")
 		}
 
-		_, err = utils.ReadStdTxsFromFile(cdc, args[0])
+		txs, err := utils.ReadStdTxsFromFile(cdc, args[0])
 		if err != nil {
 			return errors.Wrap(err, "error extracting txs from file")
+		}
+
+		for _, tx := range txs {
+			_, err = types.MakeSignature(nil, from.GetName(), "", tx)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("error signing tx %d", tx.Sequence))
+			}
 		}
 
 		//fmt.Printf("%v\n", txsToSign)

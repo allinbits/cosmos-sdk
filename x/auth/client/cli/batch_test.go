@@ -1,9 +1,17 @@
-package cli
+package cli_test
 
 import (
 	"fmt"
 	"path/filepath"
 	"testing"
+
+	"github.com/cosmos/go-bip39"
+
+	"github.com/cosmos/cosmos-sdk/x/auth/client/cli"
+
+	"github.com/cosmos/cosmos-sdk/x/staking"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -19,7 +27,10 @@ import (
 
 func TestGetBatchSignCommand(t *testing.T) {
 	cdc := amino.NewCodec()
-	cmd := GetBatchSignCommand(cdc)
+	sdk.RegisterCodec(cdc)
+	staking.RegisterCodec(cdc)
+
+	cmd := cli.GetBatchSignCommand(cdc)
 
 	tempDir, cleanFunc := tests.NewTestCaseDir(t)
 	t.Cleanup(cleanFunc)
@@ -33,7 +44,7 @@ func TestGetBatchSignCommand(t *testing.T) {
 	viper.Reset()
 	viper.Set(flags.FlagHome, tempDir)
 	viper.Set(flags.FlagFrom, "acc1")
-	viper.Set(flagMultisig, multiInfo.GetAddress())
+	viper.Set(cli.FlagMultisig, multiInfo.GetAddress())
 	cmd.SetArgs([]string{
 		"./testdata/txs.json",
 		filepath.Join(tempDir, "outputfile"),
@@ -51,14 +62,37 @@ func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKe
 
 	var pubKeys []crypto.PubKey
 	for i := 0; i < 4; i++ {
-		mnemonic, _, _ := kb.CreateMnemonic(
-			fmt.Sprintf("acc%d", i),
-			keys2.English,
-			"",
-			keys2.Secp256k1,
-		)
+		//_, seed, _ := kb.CreateMnemonic(
+		//	fmt.Sprintf("acc%d", i),
+		//	keys2.English,
+		//	"",
+		//	keys2.Secp256k1,
+		//)
 
-		pubKeys = append(pubKeys, mnemonic.GetPubKey())
+		// read entropy seed straight from crypto.Rand and convert to mnemonic
+		entropySeed, err := bip39.NewEntropy(256)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		mnemonic, err := bip39.NewMnemonic(entropySeed[:])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		account, err := kb.CreateAccount(
+			fmt.Sprintf("acc%d", i),
+			mnemonic,
+			"",
+			"",
+			0,
+			0,
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		pubKeys = append(pubKeys, account.GetPubKey())
 	}
 
 	pk := multisig.NewPubKeyMultisigThreshold(2, pubKeys)
@@ -102,8 +136,8 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 				return cleanFunc, tempDir
 			},
 			providedFlags: map[string]interface{}{
-				flagMultisig:   "cosmos1pf7m2k50lv0pc27wjz3452vu2xqs8yevxhv7w3",
-				flags.FlagFrom: "not-existing",
+				cli.FlagMultisig: "cosmos1pf7m2k50lv0pc27wjz3452vu2xqs8yevxhv7w3",
+				flags.FlagFrom:   "not-existing",
 			},
 		},
 	}
@@ -112,7 +146,7 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			cdc := amino.NewCodec()
-			cmd := GetBatchSignCommand(cdc)
+			cmd := cli.GetBatchSignCommand(cdc)
 
 			cleanFunc, tempDir := tt.keybasePrep()
 			defer cleanFunc()
