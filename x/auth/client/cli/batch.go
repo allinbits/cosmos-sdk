@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
@@ -46,6 +48,11 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 		multisigAddrStr := viper.GetString(flagMultisig)
 		if multisigAddrStr == "" {
 			return fmt.Errorf("only multisig signature is supported, provide it with %s flag", flagMultisig)
+		}
+
+		_, err = sdk.AccAddressFromBech32(multisigAddrStr)
+		if err != nil {
+			return err
 		}
 
 		_, err = kb.Get(viper.GetString(flags.FlagFrom))

@@ -5,11 +5,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tendermint/tendermint/crypto/multisig"
-
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/go-amino"
+	"github.com/tendermint/tendermint/crypto/multisig"
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/keys"
@@ -34,7 +33,7 @@ func TestGetBatchSignCommand(t *testing.T) {
 	viper.Reset()
 	viper.Set(flags.FlagHome, tempDir)
 	viper.Set(flags.FlagFrom, "acc1")
-	viper.Set(flagMultisig, multiInfo.GetName())
+	viper.Set(flagMultisig, multiInfo.GetAddress())
 	cmd.SetArgs([]string{
 		"./testdata/txs.json",
 		filepath.Join(tempDir, "outputfile"),
@@ -103,7 +102,7 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 				return cleanFunc, tempDir
 			},
 			providedFlags: map[string]interface{}{
-				flagMultisig:   "fasdfasdf",
+				flagMultisig:   "cosmos1pf7m2k50lv0pc27wjz3452vu2xqs8yevxhv7w3",
 				flags.FlagFrom: "not-existing",
 			},
 		},
