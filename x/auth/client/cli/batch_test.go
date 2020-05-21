@@ -25,11 +25,16 @@ func TestGetBatchSignCommand(t *testing.T) {
 	tempDir, cleanFunc := tests.NewTestCaseDir(t)
 	t.Cleanup(cleanFunc)
 
-	_, err := createKeybaseWithMultisigAccount(tempDir)
+	kb, _, err := createKeybaseWithMultisigAccount(tempDir)
 	require.NoError(t, err)
 
+	multiInfo, err := kb.Get("multi")
+	require.NoError(t, err)
+
+	viper.Reset()
 	viper.Set(flags.FlagHome, tempDir)
-	viper.Set(flags.FlagFrom, "multi")
+	viper.Set(flags.FlagFrom, "acc1")
+	viper.Set(flagMultisig, multiInfo.GetName())
 	cmd.SetArgs([]string{
 		"./testdata/txs.json",
 		filepath.Join(tempDir, "outputfile"),
@@ -39,10 +44,10 @@ func TestGetBatchSignCommand(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func createKeybaseWithMultisigAccount(dir string) ([]crypto.PubKey, error) {
+func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKey, error) {
 	kb, err := keys.NewKeyBaseFromDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var pubKeys []crypto.PubKey
@@ -59,10 +64,10 @@ func createKeybaseWithMultisigAccount(dir string) ([]crypto.PubKey, error) {
 
 	pk := multisig.NewPubKeyMultisigThreshold(2, pubKeys)
 	if _, err := kb.CreateMulti("multi", pk); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return pubKeys, nil
+	return kb, pubKeys, nil
 }
 
 func TestGetBatchSignCommand_Error(t *testing.T) {
@@ -70,10 +75,11 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 		name          string
 		errorContains string
 		keybasePrep   func() (cleanFunc func(), tempDir string)
+		providedFlags map[string]interface{}
 	}{
 		{
-			name:          "not multisign",
-			errorContains: "must be of type multi",
+			name:          "flag multisign not provided",
+			errorContains: "only multisig signature is supported",
 			keybasePrep: func() (func(), string) {
 				tempDir, cleanFunc := tests.NewTestCaseDir(t)
 				t.Cleanup(cleanFunc)
@@ -88,13 +94,17 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 			},
 		},
 		{
-			name:          "non existing key",
-			errorContains: "Key acc1 not found",
+			name:          "not existing key",
+			errorContains: "key not found: Key not-existing not found",
 			keybasePrep: func() (func(), string) {
 				tempDir, cleanFunc := tests.NewTestCaseDir(t)
 				t.Cleanup(cleanFunc)
 
 				return cleanFunc, tempDir
+			},
+			providedFlags: map[string]interface{}{
+				flagMultisig:   "fasdfasdf",
+				flags.FlagFrom: "not-existing",
 			},
 		},
 	}
@@ -108,8 +118,13 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 			cleanFunc, tempDir := tt.keybasePrep()
 			defer cleanFunc()
 
+			viper.Reset()
 			viper.Set(flags.FlagHome, tempDir)
-			viper.Set(flags.FlagFrom, "acc1")
+
+			for key, val := range tt.providedFlags {
+				viper.Set(key, val)
+			}
+
 			cmd.SetArgs([]string{
 				"./testdata/txs.json",
 				filepath.Join(tempDir, "outputfile"),
