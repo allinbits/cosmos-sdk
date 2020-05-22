@@ -13,7 +13,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/cosmos/cosmos-sdk/codec"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 )
@@ -36,11 +35,6 @@ This command is intended to work offline for security purposes.`,
 		Args:   cobra.ExactArgs(1),
 	}
 
-	cmd.Flags().String(
-		FlagMultisig, "",
-		"Address of the multisig account on behalf of which the transaction shall be signed",
-	)
-
 	cmd.Flags().String(FlagPassPhrase, "", "The passphrase of the key needed to sign the transaction.")
 	cmd.Flags().String(client.FlagOutputDocument, "",
 		"write the resulto to the given file instead of the default location")
@@ -58,16 +52,6 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 		out, err := setOutput()
 		if err != nil {
 			return errors.Wrap(err, "error with output")
-		}
-
-		multisigAddrStr := viper.GetString(FlagMultisig)
-		if multisigAddrStr == "" {
-			return fmt.Errorf("only multisig signature is supported, provide it with %s flag", FlagMultisig)
-		}
-
-		_, err = sdk.AccAddressFromBech32(multisigAddrStr)
-		if err != nil {
-			return err
 		}
 
 		from, err := kb.Get(viper.GetString(flags.FlagFrom))

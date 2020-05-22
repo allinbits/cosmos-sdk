@@ -183,24 +183,12 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 		providedFlags map[string]interface{}
 	}{
 		{
-			name:          "flag multisign not provided",
-			errorContains: "only multisig signature is supported",
-			keybasePrep: func(tempDir string) {
-				kb, err := keys.NewKeyBaseFromDir(tempDir)
-				require.NoError(t, err)
-
-				_, _, err = kb.CreateMnemonic("acc1", keys2.English, "", keys2.Secp256k1)
-				require.NoError(t, err)
-			},
-		},
-		{
 			name:          "not existing key",
 			errorContains: "key not found: Key not-existing not found",
 			keybasePrep: func(tempDir string) {
 			},
 			providedFlags: map[string]interface{}{
-				cli.FlagMultisig: "cosmos1pf7m2k50lv0pc27wjz3452vu2xqs8yevxhv7w3",
-				flags.FlagFrom:   "not-existing",
+				flags.FlagFrom: "not-existing",
 			},
 		},
 		{
@@ -210,8 +198,7 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 				createKeybaseWithMultisigAccount(tempDir)
 			},
 			providedFlags: map[string]interface{}{
-				cli.FlagMultisig: "cosmos1pf7m2k50lv0pc27wjz3452vu2xqs8yevxhv7w3",
-				flags.FlagFrom:   "acc1",
+				flags.FlagFrom: "acc1",
 			},
 		},
 	}
