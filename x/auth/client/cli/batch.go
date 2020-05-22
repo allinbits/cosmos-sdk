@@ -1,7 +1,6 @@
 package cli
 
 import (
-	json2 "encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -88,7 +87,7 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 				return errors.Wrap(err, fmt.Sprintf("error signing tx %d", tx.Sequence))
 			}
 
-			json, err := json2.Marshal(signature)
+			json, err := cdc.MarshalJSON(signature)
 			if err != nil {
 				return errors.Wrap(err, "error marshalling signature")
 			}

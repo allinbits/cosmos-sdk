@@ -9,10 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/codec"
-
-	"github.com/cosmos/cosmos-sdk/x/auth"
-
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/go-amino"
@@ -20,9 +16,11 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/keys"
+	"github.com/cosmos/cosmos-sdk/codec"
 	keys2 "github.com/cosmos/cosmos-sdk/crypto/keys"
 	"github.com/cosmos/cosmos-sdk/tests"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/go-bip39"
@@ -34,6 +32,7 @@ const passphrase = "012345678"
 func TestGetBatchSignCommand(t *testing.T) {
 	cdc := amino.NewCodec()
 	sdk.RegisterCodec(cdc)
+	codec.RegisterCrypto(cdc)
 	staking.RegisterCodec(cdc)
 
 	cmd := cli.GetBatchSignCommand(cdc)
@@ -84,6 +83,10 @@ func validateSignatures(t *testing.T, cdc *codec.Codec, inputFile io.Reader, out
 
 	if len(txs) != len(signatures) {
 		t.Errorf("must be same amount of txs and signatures: '%d' txs, '%d' signatures", len(txs), len(signatures))
+	}
+
+	for i := 0; i < len(txs); i++ {
+		require.True(t, signatures[i].PubKey.VerifyBytes(txs[i].Bytes(), signatures[i].Signature))
 	}
 }
 
