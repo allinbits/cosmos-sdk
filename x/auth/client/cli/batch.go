@@ -1,21 +1,22 @@
 package cli
 
 import (
+	json2 "encoding/json"
 	"fmt"
-
-	"github.com/cosmos/cosmos-sdk/x/auth/types"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"io"
+	"os"
 
 	"github.com/pkg/errors"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
+	"github.com/cosmos/cosmos-sdk/x/auth/types"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 
 func GetBatchSignCommand(codec *codec.Codec) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "sign-batch [in-file] [out-file]",
+		Use:   "sign-batch [in-file]",
 		Short: "Sign many standard transactions generated offline",
 		Long: `Sign a list of transactions created with the --generate-only flag.
 It will read StdSignDoc JSONs from [in-file], one transaction per line, and
@@ -33,7 +34,7 @@ produce a file of JSON encoded StdSignatures, one per line.
 This command is intended to work offline for security purposes.`,
 		PreRun: preSignCmd,
 		RunE:   makeBatchSignCmd(codec),
-		Args:   cobra.ExactArgs(2),
+		Args:   cobra.ExactArgs(1),
 	}
 
 	cmd.Flags().String(
@@ -42,6 +43,8 @@ This command is intended to work offline for security purposes.`,
 	)
 
 	cmd.Flags().String(FlagPassPhrase, "", "The passphrase of the key needed to sign the transaction.")
+	cmd.Flags().String(client.FlagOutputDocument, "",
+		"write the resulto to the given file instead of the default location")
 
 	return flags.PostCommands(cmd)[0]
 }
@@ -51,6 +54,11 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 		kb, err := keys.NewKeyBaseFromDir(viper.GetString(flags.FlagHome))
 		if err != nil {
 			return err
+		}
+
+		out, err := setOutput()
+		if err != nil {
+			return errors.Wrap(err, "error with output")
 		}
 
 		multisigAddrStr := viper.GetString(FlagMultisig)
@@ -75,14 +83,36 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 
 		passphrase := viper.GetString(FlagPassPhrase)
 		for _, tx := range txs {
-			_, err = types.MakeSignature(nil, from.GetName(), passphrase, tx)
+			signature, err := types.MakeSignature(nil, from.GetName(), passphrase, tx)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error signing tx %d", tx.Sequence))
 			}
-		}
 
-		//fmt.Printf("%v\n", txsToSign)
+			json, err := json2.Marshal(signature)
+			if err != nil {
+				return errors.Wrap(err, "error marshalling signature")
+			}
+
+			_, err = fmt.Fprintf(out, "%s\n", json)
+			if err != nil {
+				return errors.Wrap(err, "error writing to output")
+			}
+		}
 
 		return nil
 	}
+}
+
+func setOutput() (io.Writer, error) {
+	outputFlag := viper.GetString(client.FlagOutputDocument)
+	if outputFlag == "" {
+		return os.Stdout, nil
+	}
+
+	out, err := os.OpenFile(outputFlag, os.O_RDWR, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }

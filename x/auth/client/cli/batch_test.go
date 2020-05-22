@@ -2,8 +2,16 @@ package cli_test
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/cosmos/cosmos-sdk/codec"
+
+	"github.com/cosmos/cosmos-sdk/x/auth"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -33,6 +41,10 @@ func TestGetBatchSignCommand(t *testing.T) {
 	tempDir, cleanFunc := tests.NewTestCaseDir(t)
 	t.Cleanup(cleanFunc)
 
+	outputFile, err := os.Create(filepath.Join(tempDir, "the-output"))
+	require.NoError(t, err)
+	defer outputFile.Close()
+
 	kb, _, err := createKeybaseWithMultisigAccount(tempDir)
 	require.NoError(t, err)
 
@@ -44,14 +56,79 @@ func TestGetBatchSignCommand(t *testing.T) {
 	viper.Set(flags.FlagFrom, "acc1")
 	viper.Set(cli.FlagMultisig, multiInfo.GetAddress())
 	viper.Set(cli.FlagPassPhrase, passphrase)
+	viper.Set(flags.FlagOutputDocument, outputFile.Name())
 
 	cmd.SetArgs([]string{
 		"./testdata/txs.json",
-		filepath.Join(tempDir, "outputfile"),
 	})
 
 	err = cmd.Execute()
 	require.NoError(t, err)
+
+	// Validate Result
+	inputFile, err := os.Open("./testdata/txs.json")
+	require.NoError(t, err)
+
+	validateSignatures(t, cdc, inputFile, outputFile)
+}
+
+func validateSignatures(t *testing.T, cdc *codec.Codec, inputFile io.Reader, outputFile io.Reader) {
+	inputData, err := ioutil.ReadAll(inputFile)
+	require.NoError(t, err)
+
+	outputData, err := ioutil.ReadAll(outputFile)
+	require.NoError(t, err)
+
+	txs := extractTxs(t, cdc, inputData)
+	signatures := extractSignatures(t, cdc, outputData)
+
+	if len(txs) != len(signatures) {
+		t.Errorf("must be same amount of txs and signatures: '%d' txs, '%d' signatures", len(txs), len(signatures))
+	}
+}
+
+func extractTxs(t *testing.T, cdc *codec.Codec, inputData []byte) []auth.StdSignMsg {
+	inputLines := strings.Split(string(inputData), "\n")
+
+	var parsedTxs []auth.StdSignMsg
+	for _, txLine := range inputLines {
+		if len(txLine) == 0 {
+			break
+		}
+
+		var parsedTx auth.StdSignMsg
+
+		err := cdc.UnmarshalJSON([]byte(txLine), &parsedTx)
+		if err != nil {
+			t.Errorf("error extracting tx: %s", err)
+		}
+
+		parsedTxs = append(parsedTxs, parsedTx)
+	}
+
+	return parsedTxs
+}
+
+func extractSignatures(t *testing.T, cdc *codec.Codec, outputData []byte) []auth.StdSignature {
+	outputLines := strings.Split(string(outputData), "\n")
+
+	var parsedSigs []auth.StdSignature
+	for _, sigLine := range outputLines {
+		if len(sigLine) == 0 {
+			break
+		}
+
+		var parsedSig auth.StdSignature
+
+		err := cdc.UnmarshalJSON([]byte(sigLine), &parsedSig)
+		if err != nil {
+			t.Errorf("error extracting tx: %s", err)
+		}
+
+		parsedSigs = append(parsedSigs, parsedSig)
+	}
+
+	return parsedSigs
 }
 
 func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKey, error) {
@@ -160,7 +237,6 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 
 			cmd.SetArgs([]string{
 				"./testdata/txs.json",
-				filepath.Join(tempDir, "outputfile"),
 			})
 
 			err := cmd.Execute()
