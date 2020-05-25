@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	flagMultisig     = "multisig"
+	FlagMultisig     = "multisig"
 	flagAppend       = "append"
 	flagValidateSigs = "validate-signatures"
 	flagOffline      = "offline"
@@ -58,7 +58,7 @@ be generated via the 'multisign' command.
 	}
 
 	cmd.Flags().String(
-		flagMultisig, "",
+		FlagMultisig, "",
 		"Address of the multisig account on behalf of which the transaction shall be signed",
 	)
 	cmd.Flags().Bool(
@@ -113,7 +113,7 @@ func makeSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) error
 		// if --signature-only is on, then override --append
 		var newTx types.StdTx
 		generateSignatureOnly := viper.GetBool(flagSigOnly)
-		multisigAddrStr := viper.GetString(flagMultisig)
+		multisigAddrStr := viper.GetString(FlagMultisig)
 
 		if multisigAddrStr != "" {
 			var multisigAddr sdk.AccAddress

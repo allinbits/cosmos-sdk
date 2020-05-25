@@ -3,11 +3,16 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	"github.com/cosmos/cosmos-sdk/x/staking/types"
+
+	"github.com/cosmos/cosmos-sdk/tests"
 	"github.com/stretchr/testify/assert"
+
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 
@@ -101,14 +106,30 @@ func TestReadStdTxFromFile(t *testing.T) {
 	stdTx := authtypes.NewStdTx([]sdk.Msg{}, fee, []authtypes.StdSignature{}, "foomemo")
 
 	// Write it to the file
-	encodedTx, _ := cdc.MarshalJSON(stdTx)
-	jsonTxFile := writeToNewTempFile(t, string(encodedTx))
-	defer os.Remove(jsonTxFile.Name())
+	dir, cleanup := tests.NewTestCaseDir(t)
+	t.Cleanup(cleanup)
+	tempFile := newTempFile(t, dir)
+
+	encodedTx, err := cdc.MarshalJSON(stdTx)
+	require.NoError(t, err)
+	writeToFile(t, tempFile, string(encodedTx))
 
 	// Read it back
-	decodedTx, err := ReadStdTxFromFile(cdc, jsonTxFile.Name())
+	decodedTx, err := ReadStdTxFromFile(cdc, tempFile.Name())
 	require.NoError(t, err)
 	require.Equal(t, decodedTx.Memo, "foomemo")
+}
+
+func TestReadStdTxsFromFile(t *testing.T) {
+	cdc := codec.New()
+	sdk.RegisterCodec(cdc)
+	types.RegisterCodec(cdc)
+
+	txsFromFile, err := ReadStdTxsFromFile(cdc, "./testdata/txs")
+	require.NoError(t, err)
+
+	require.Equal(t, uint64(37), txsFromFile[0].Sequence)
+	require.Equal(t, uint64(38), txsFromFile[1].Sequence)
 }
 
 func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder) {
@@ -122,14 +143,16 @@ func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder)
 	require.Equal(t, defaultEncoderBytes, encoderBytes)
 }
 
-func writeToNewTempFile(t *testing.T, data string) *os.File {
-	fp, err := ioutil.TempFile(os.TempDir(), "client_tx_test")
-	require.NoError(t, err)
-
-	_, err = fp.WriteString(data)
+func newTempFile(t *testing.T, filepath string) *os.File {
+	fp, err := ioutil.TempFile(filepath, "client_tx_test")
 	require.NoError(t, err)
 
 	return fp
+}
+
+func writeToFile(t *testing.T, fp *os.File, data string) {
+	_, err := fp.WriteString(fmt.Sprintf("%s\n", data))
+	require.NoError(t, err)
 }
 
 func makeCodec() *codec.Codec {

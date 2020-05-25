@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -246,6 +247,37 @@ func ReadStdTxFromFile(cdc *codec.Codec, filename string) (stdTx authtypes.StdTx
 	}
 
 	return
+}
+
+// ReadStdTxsFromFile reads a list of transactions from a file
+func ReadStdTxsFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdSignMsg, error) {
+	bz, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(bz), "\n")
+
+	return buildTxsFromJsonLines(cdc, lines)
+}
+
+func buildTxsFromJsonLines(cdc *codec.Codec, jsonTxs []string) ([]authtypes.StdSignMsg, error) {
+	var txs []authtypes.StdSignMsg
+
+	for _, jsonTx := range jsonTxs {
+		if len(jsonTx) == 0 {
+			break
+		}
+
+		var tx authtypes.StdSignMsg
+		err := cdc.UnmarshalJSON([]byte(jsonTx), &tx)
+		if err != nil {
+			return nil, err
+		}
+		txs = append(txs, tx)
+	}
+
+	return txs, nil
 }
 
 func populateAccountFromState(
