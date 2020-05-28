@@ -59,13 +59,34 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 			return errors.Wrap(err, "key not found")
 		}
 
+		passphrase := viper.GetString(FlagPassPhrase)
+		if passphrase == "" {
+			return fmt.Errorf("flag '--%s' is required", FlagPassPhrase)
+		}
+
+		accountNum := viper.GetUint64(client.FlagAccountNumber)
+		if accountNum == 0 {
+			return fmt.Errorf("flag '--%s' is required", client.FlagAccountNumber)
+		}
+
+		sequence := viper.GetUint64(client.FlagSequence)
+		if sequence == 0 {
+			return fmt.Errorf("flag '--%s' is required", client.FlagSequence)
+		}
+
+		chainId := viper.GetString(client.FlagChainID)
+		if chainId == "" {
+			return fmt.Errorf("flag '--%s' is required", client.FlagChainID)
+		}
+
 		txs, err := utils.ReadStdTxsFromFile(cdc, args[0])
 		if err != nil {
 			return errors.Wrap(err, "error extracting txs from file")
 		}
 
-		passphrase := viper.GetString(FlagPassPhrase)
-		for _, tx := range txs {
+		stdSignTxs := getStdSignTxsFromStdTxs(chainId, accountNum, sequence, txs)
+
+		for _, tx := range stdSignTxs {
 			signature, err := types.MakeSignature(nil, from.GetName(), passphrase, tx)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("error signing tx %d", tx.Sequence))
@@ -84,6 +105,25 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 
 		return nil
 	}
+}
+
+func getStdSignTxsFromStdTxs(chainId string, accountNumber, sequence uint64, stdTxs []types.StdTx) []types.StdSignMsg {
+	var stdSignTxs []types.StdSignMsg
+
+	for _, stdTx := range stdTxs {
+		stdSignTxs = append(stdSignTxs, types.StdSignMsg{
+			ChainID:       chainId,
+			AccountNumber: accountNumber,
+			Sequence:      sequence,
+			Fee:           stdTx.Fee,
+			Msgs:          stdTx.GetMsgs(),
+			Memo:          stdTx.Memo,
+		})
+
+		sequence++
+	}
+
+	return stdSignTxs
 }
 
 func setOutput() (io.Writer, error) {

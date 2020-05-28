@@ -27,7 +27,12 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 )
 
-const passphrase = "012345678"
+const (
+	passphrase    = "012345678"
+	accountnumber = 123
+	sequence      = 35
+	chainId       = "the-chain-id"
+)
 
 func TestGetBatchSignCommand(t *testing.T) {
 	cdc := amino.NewCodec()
@@ -56,6 +61,9 @@ func TestGetBatchSignCommand(t *testing.T) {
 	viper.Set(cli.FlagMultisig, multiInfo.GetAddress())
 	viper.Set(cli.FlagPassPhrase, passphrase)
 	viper.Set(flags.FlagOutputDocument, outputFile.Name())
+	viper.Set(flags.FlagAccountNumber, accountnumber)
+	viper.Set(flags.FlagSequence, sequence)
+	viper.Set(flags.FlagChainID, chainId)
 
 	cmd.SetArgs([]string{
 		"./testdata/txs.json",
@@ -93,20 +101,33 @@ func validateSignatures(t *testing.T, cdc *codec.Codec, inputFile io.Reader, out
 func extractTxs(t *testing.T, cdc *codec.Codec, inputData []byte) []auth.StdSignMsg {
 	inputLines := strings.Split(string(inputData), "\n")
 
+	seq := uint64(sequence)
+
 	var parsedTxs []auth.StdSignMsg
 	for _, txLine := range inputLines {
 		if len(txLine) == 0 {
 			break
 		}
 
-		var parsedTx auth.StdSignMsg
+		var parsedTx auth.StdTx
 
 		err := cdc.UnmarshalJSON([]byte(txLine), &parsedTx)
 		if err != nil {
 			t.Errorf("error extracting tx: %s", err)
 		}
 
-		parsedTxs = append(parsedTxs, parsedTx)
+		stdSignMsg := auth.StdSignMsg{
+			ChainID:       chainId,
+			AccountNumber: accountnumber,
+			Sequence:      seq,
+			Fee:           parsedTx.Fee,
+			Msgs:          parsedTx.GetMsgs(),
+			Memo:          parsedTx.GetMemo(),
+		}
+
+		parsedTxs = append(parsedTxs, stdSignMsg)
+
+		seq++
 	}
 
 	return parsedTxs
@@ -192,13 +213,63 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 			},
 		},
 		{
+			name:          "passphrase required",
+			errorContains: "flag '--passphrase' is required",
+			keybasePrep: func(tempDir string) {
+				createKeybaseWithMultisigAccount(tempDir)
+			},
+			providedFlags: map[string]interface{}{
+				flags.FlagFrom: "acc1",
+			},
+		},
+		{
+			name:          "account number required",
+			errorContains: "flag '--account-number' is required",
+			keybasePrep: func(tempDir string) {
+				createKeybaseWithMultisigAccount(tempDir)
+			},
+			providedFlags: map[string]interface{}{
+				flags.FlagFrom:     "acc1",
+				cli.FlagPassPhrase: passphrase,
+			},
+		},
+		{
+			name:          "sequence required",
+			errorContains: "flag '--sequence' is required",
+			keybasePrep: func(tempDir string) {
+				createKeybaseWithMultisigAccount(tempDir)
+			},
+			providedFlags: map[string]interface{}{
+				flags.FlagFrom:          "acc1",
+				cli.FlagPassPhrase:      passphrase,
+				flags.FlagAccountNumber: 50,
+			},
+		},
+		{
+			name:          "chain id required",
+			errorContains: "flag '--chain-id' is required",
+			keybasePrep: func(tempDir string) {
+				createKeybaseWithMultisigAccount(tempDir)
+			},
+			providedFlags: map[string]interface{}{
+				flags.FlagFrom:          "acc1",
+				cli.FlagPassPhrase:      passphrase,
+				flags.FlagAccountNumber: 50,
+				flags.FlagSequence:      50,
+			},
+		},
+		{
 			name:          "invalid passphrase",
 			errorContains: "invalid account password",
 			keybasePrep: func(tempDir string) {
 				createKeybaseWithMultisigAccount(tempDir)
 			},
 			providedFlags: map[string]interface{}{
-				flags.FlagFrom: "acc1",
+				flags.FlagFrom:          "acc1",
+				cli.FlagPassPhrase:      "bad-passphrase",
+				flags.FlagAccountNumber: 50,
+				flags.FlagSequence:      50,
+				flags.FlagChainID:       "the-chain-id",
 			},
 		},
 	}
