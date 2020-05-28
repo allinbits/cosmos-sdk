@@ -100,6 +100,7 @@ func TestConfiguredTxEncoder(t *testing.T) {
 func TestReadStdTxFromFile(t *testing.T) {
 	cdc := codec.New()
 	sdk.RegisterCodec(cdc)
+	authtypes.RegisterCodec(cdc)
 
 	// Build a test transaction
 	fee := authtypes.NewStdFee(50000, sdk.Coins{sdk.NewInt64Coin("atom", 150)})
@@ -124,12 +125,26 @@ func TestReadStdTxsFromFile(t *testing.T) {
 	cdc := codec.New()
 	sdk.RegisterCodec(cdc)
 	types.RegisterCodec(cdc)
+	authtypes.RegisterCodec(cdc)
 
 	txsFromFile, err := ReadStdTxsFromFile(cdc, "./testdata/txs")
 	require.NoError(t, err)
 
-	require.Equal(t, uint64(37), txsFromFile[0].Sequence)
-	require.Equal(t, uint64(38), txsFromFile[1].Sequence)
+	require.Len(t, txsFromFile, 2)
+
+	delAddrs, err := sdk.AccAddressFromHex("E313D150EB5729180E2F6D5F3B48185C4632B3B7")
+	require.NoError(t, err)
+	valAddrs, err := sdk.ValAddressFromHex("8586EE9979E5E09D3F46C0C839DC40E3FC20C4D7")
+	require.NoError(t, err)
+
+	require.Equal(t, authtypes.NewStdFee(200000, sdk.NewCoins(sdk.NewCoin("uatom", sdk.NewInt(4000)))), txsFromFile[0].Fee)
+	require.Equal(t, []sdk.Msg{
+		types.NewMsgUndelegate(
+			delAddrs,
+			valAddrs,
+			sdk.NewCoin("uatom", sdk.NewInt(100000000)),
+		)}, txsFromFile[0].GetMsgs(),
+	)
 }
 
 func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder) {
