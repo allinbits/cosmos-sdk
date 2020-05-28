@@ -192,13 +192,63 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 			},
 		},
 		{
+			name:          "passphrase required",
+			errorContains: "flag '--passphrase' is required",
+			keybasePrep: func(tempDir string) {
+				createKeybaseWithMultisigAccount(tempDir)
+			},
+			providedFlags: map[string]interface{}{
+				flags.FlagFrom: "acc1",
+			},
+		},
+		{
+			name:          "account number required",
+			errorContains: "flag '--account-number' is required",
+			keybasePrep: func(tempDir string) {
+				createKeybaseWithMultisigAccount(tempDir)
+			},
+			providedFlags: map[string]interface{}{
+				flags.FlagFrom:     "acc1",
+				cli.FlagPassPhrase: passphrase,
+			},
+		},
+		{
+			name:          "sequence required",
+			errorContains: "flag '--sequence' is required",
+			keybasePrep: func(tempDir string) {
+				createKeybaseWithMultisigAccount(tempDir)
+			},
+			providedFlags: map[string]interface{}{
+				flags.FlagFrom:          "acc1",
+				cli.FlagPassPhrase:      passphrase,
+				flags.FlagAccountNumber: 50,
+			},
+		},
+		{
+			name:          "chain id required",
+			errorContains: "flag '--chain-id' is required",
+			keybasePrep: func(tempDir string) {
+				createKeybaseWithMultisigAccount(tempDir)
+			},
+			providedFlags: map[string]interface{}{
+				flags.FlagFrom:          "acc1",
+				cli.FlagPassPhrase:      passphrase,
+				flags.FlagAccountNumber: 50,
+				flags.FlagSequence:      50,
+			},
+		},
+		{
 			name:          "invalid passphrase",
 			errorContains: "invalid account password",
 			keybasePrep: func(tempDir string) {
 				createKeybaseWithMultisigAccount(tempDir)
 			},
 			providedFlags: map[string]interface{}{
-				flags.FlagFrom: "acc1",
+				flags.FlagFrom:          "acc1",
+				cli.FlagPassPhrase:      "bad-passphrase",
+				flags.FlagAccountNumber: 50,
+				flags.FlagSequence:      50,
+				flags.FlagChainID:       "the-chain-id",
 			},
 		},
 	}
