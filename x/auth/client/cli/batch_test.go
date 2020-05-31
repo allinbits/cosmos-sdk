@@ -35,10 +35,10 @@ const (
 )
 
 func TestGetBatchSignCommand(t *testing.T) {
-	cdc := amino.NewCodec()
-	sdk.RegisterCodec(cdc)
-	codec.RegisterCrypto(cdc)
-	staking.RegisterCodec(cdc)
+	cdc := getCodec()
+
+	err := mockStdin(t, "./testdata/cmd-stdin")
+	require.NoError(t, err)
 
 	cmd := cli.GetBatchSignCommand(cdc)
 
@@ -57,13 +57,14 @@ func TestGetBatchSignCommand(t *testing.T) {
 
 	viper.Reset()
 	viper.Set(flags.FlagHome, tempDir)
-	viper.Set(flags.FlagFrom, "acc1")
+	viper.Set(flags.FlagFrom, "key1")
 	viper.Set(cli.FlagMultisig, multiInfo.GetAddress())
 	viper.Set(cli.FlagPassPhrase, passphrase)
 	viper.Set(flags.FlagOutputDocument, outputFile.Name())
 	viper.Set(flags.FlagAccountNumber, accountnumber)
 	viper.Set(flags.FlagSequence, sequence)
 	viper.Set(flags.FlagChainID, chainId)
+	viper.Set(flags.FlagTrustNode, true)
 
 	cmd.SetArgs([]string{
 		"./testdata/txs.json",
@@ -77,6 +78,23 @@ func TestGetBatchSignCommand(t *testing.T) {
 	require.NoError(t, err)
 
 	validateSignatures(t, cdc, inputFile, outputFile)
+}
+
+func mockStdin(t *testing.T, inputFile string) error {
+	inputStdin, err := os.Open(inputFile)
+	require.NoError(t, err)
+	os.Stdin = inputStdin
+	return err
+}
+
+func getCodec() *amino.Codec {
+	cdc := amino.NewCodec()
+	sdk.RegisterCodec(cdc)
+	codec.RegisterCrypto(cdc)
+	staking.RegisterCodec(cdc)
+	auth.RegisterCodec(cdc)
+
+	return cdc
 }
 
 func validateSignatures(t *testing.T, cdc *codec.Codec, inputFile io.Reader, outputFile io.Reader) {
@@ -161,6 +179,18 @@ func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKe
 		return nil, nil, err
 	}
 
+	_, err = kb.CreateAccount(
+		"key1",
+		"orbit juice speak next refuse ten capable release inherit tuna spawn inherit topple shoot rebuild merit door deal salute wire traffic want oxygen sustain",
+		"",
+		passphrase,
+		0,
+		0,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var pubKeys []crypto.PubKey
 	for i := 0; i < 4; i++ {
 		entropySeed, err := bip39.NewEntropy(256)
@@ -198,85 +228,47 @@ func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKe
 
 func TestGetBatchSignCommand_Error(t *testing.T) {
 	tts := []struct {
-		name          string
-		errorContains string
-		keybasePrep   func(tempDir string)
-		providedFlags map[string]interface{}
+		name           string
+		errorContains  string
+		keybasePrep    func(tempDir string)
+		providedFlags  map[string]interface{}
+		stdinFileInput string
 	}{
 		{
-			name:          "not existing key",
-			errorContains: "key not found: Key not-existing not found",
-			keybasePrep: func(tempDir string) {
-			},
-			providedFlags: map[string]interface{}{
-				flags.FlagFrom: "not-existing",
-			},
-		},
-		{
-			name:          "passphrase required",
-			errorContains: "flag '--passphrase' is required",
+			name:          "invalid signing account",
+			errorContains: "tx intended signer does not match the given signer: acc1",
 			keybasePrep: func(tempDir string) {
 				createKeybaseWithMultisigAccount(tempDir)
 			},
 			providedFlags: map[string]interface{}{
-				flags.FlagFrom: "acc1",
-			},
-		},
-		{
-			name:          "account number required",
-			errorContains: "flag '--account-number' is required",
-			keybasePrep: func(tempDir string) {
-				createKeybaseWithMultisigAccount(tempDir)
-			},
-			providedFlags: map[string]interface{}{
-				flags.FlagFrom:     "acc1",
-				cli.FlagPassPhrase: passphrase,
-			},
-		},
-		{
-			name:          "sequence required",
-			errorContains: "flag '--sequence' is required",
-			keybasePrep: func(tempDir string) {
-				createKeybaseWithMultisigAccount(tempDir)
-			},
-			providedFlags: map[string]interface{}{
-				flags.FlagFrom:          "acc1",
-				cli.FlagPassPhrase:      passphrase,
-				flags.FlagAccountNumber: 50,
-			},
-		},
-		{
-			name:          "chain id required",
-			errorContains: "flag '--chain-id' is required",
-			keybasePrep: func(tempDir string) {
-				createKeybaseWithMultisigAccount(tempDir)
-			},
-			providedFlags: map[string]interface{}{
-				flags.FlagFrom:          "acc1",
+				flags.FlagFrom:          "acc1", // Expects key1
 				cli.FlagPassPhrase:      passphrase,
 				flags.FlagAccountNumber: 50,
 				flags.FlagSequence:      50,
+				flags.FlagChainID:       chainId,
+				flags.FlagTrustNode:     true,
 			},
+			stdinFileInput: "./testdata/cmd-stdin",
 		},
 		{
-			name:          "invalid passphrase",
+			name:          "bad passphrase",
 			errorContains: "invalid account password",
 			keybasePrep: func(tempDir string) {
 				createKeybaseWithMultisigAccount(tempDir)
 			},
 			providedFlags: map[string]interface{}{
-				flags.FlagFrom:          "acc1",
-				cli.FlagPassPhrase:      "bad-passphrase",
+				flags.FlagFrom:          "key1", // Expects key1
+				cli.FlagPassPhrase:      passphrase,
 				flags.FlagAccountNumber: 50,
 				flags.FlagSequence:      50,
-				flags.FlagChainID:       "the-chain-id",
+				flags.FlagChainID:       chainId,
+				flags.FlagTrustNode:     true,
 			},
+			stdinFileInput: "./testdata/cmd-stdin-bad-passphrase",
 		},
 	}
 
-	cdc := amino.NewCodec()
-	sdk.RegisterCodec(cdc)
-	staking.RegisterCodec(cdc)
+	cdc := getCodec()
 
 	for _, tt := range tts {
 		tt := tt
@@ -300,7 +292,9 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 				"./testdata/txs.json",
 			})
 
-			err := cmd.Execute()
+			err := mockStdin(t, tt.stdinFileInput)
+
+			err = cmd.Execute()
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tt.errorContains)
 		})
