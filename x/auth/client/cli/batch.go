@@ -35,9 +35,8 @@ This command is intended to work offline for security purposes.`,
 		Args:   cobra.ExactArgs(1),
 	}
 
-	cmd.Flags().String(FlagPassPhrase, "", "The passphrase of the key needed to sign the transaction.")
 	cmd.Flags().String(client.FlagOutputDocument, "",
-		"write the resulto to the given file instead of the default location")
+		"write the result to the given file instead of the default location")
 
 	return flags.PostCommands(cmd)[0]
 }
@@ -50,26 +49,6 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 		out, err := setOutput()
 		if err != nil {
 			return errors.Wrap(err, "error with output")
-		}
-
-		passphrase := viper.GetString(FlagPassPhrase)
-		if passphrase == "" {
-			return fmt.Errorf("flag '--%s' is required", FlagPassPhrase)
-		}
-
-		accountNum := viper.GetUint64(client.FlagAccountNumber)
-		if accountNum == 0 {
-			return fmt.Errorf("flag '--%s' is required", client.FlagAccountNumber)
-		}
-
-		sequence := viper.GetUint64(client.FlagSequence)
-		if sequence == 0 {
-			return fmt.Errorf("flag '--%s' is required", client.FlagSequence)
-		}
-
-		chainId := viper.GetString(client.FlagChainID)
-		if chainId == "" {
-			return fmt.Errorf("flag '--%s' is required", client.FlagChainID)
 		}
 
 		txs, err := utils.ReadStdTxsFromFile(cdc, args[0])
