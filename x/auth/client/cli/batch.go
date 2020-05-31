@@ -5,13 +5,14 @@ import (
 	"io"
 	"os"
 
+	"github.com/cosmos/cosmos-sdk/client/context"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -44,19 +45,12 @@ This command is intended to work offline for security purposes.`,
 
 func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		kb, err := keys.NewKeyBaseFromDir(viper.GetString(flags.FlagHome))
-		if err != nil {
-			return err
-		}
+		cliCtx := context.NewCLIContext().WithCodec(cdc)
+		txBldr := types.NewTxBuilderFromCLI()
 
 		out, err := setOutput()
 		if err != nil {
 			return errors.Wrap(err, "error with output")
-		}
-
-		from, err := kb.Get(viper.GetString(flags.FlagFrom))
-		if err != nil {
-			return errors.Wrap(err, "key not found")
 		}
 
 		passphrase := viper.GetString(FlagPassPhrase)
@@ -84,19 +78,13 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 			return errors.Wrap(err, "error extracting txs from file")
 		}
 
-		stdSignTxs := getStdSignTxsFromStdTxs(chainId, accountNum, sequence, txs)
-
-		for _, tx := range stdSignTxs {
-			signature, err := types.MakeSignature(nil, from.GetName(), passphrase, tx)
+		for _, tx := range txs {
+			stdTx, err := utils.SignStdTx(txBldr, cliCtx, viper.GetString(flags.FlagFrom), tx, false, true)
 			if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("error signing tx %d", tx.Sequence))
+				return errors.Wrap(err, "error signing stdTx")
 			}
 
-			json, err := cdc.MarshalJSON(signature)
-			if err != nil {
-				return errors.Wrap(err, "error marshalling signature")
-			}
-
+			json, err := cdc.MarshalJSON(stdTx.GetSignatures()[0])
 			_, err = fmt.Fprintf(out, "%s\n", json)
 			if err != nil {
 				return errors.Wrap(err, "error writing to output")
@@ -105,25 +93,6 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 
 		return nil
 	}
-}
-
-func getStdSignTxsFromStdTxs(chainId string, accountNumber, sequence uint64, stdTxs []types.StdTx) []types.StdSignMsg {
-	var stdSignTxs []types.StdSignMsg
-
-	for _, stdTx := range stdTxs {
-		stdSignTxs = append(stdSignTxs, types.StdSignMsg{
-			ChainID:       chainId,
-			AccountNumber: accountNumber,
-			Sequence:      sequence,
-			Fee:           stdTx.Fee,
-			Msgs:          stdTx.GetMsgs(),
-			Memo:          stdTx.Memo,
-		})
-
-		sequence++
-	}
-
-	return stdSignTxs
 }
 
 func setOutput() (io.Writer, error) {
