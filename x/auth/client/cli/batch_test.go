@@ -1,7 +1,6 @@
 package cli_test
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -23,7 +22,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/auth"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/staking"
-	"github.com/cosmos/go-bip39"
 	"github.com/tendermint/tendermint/crypto"
 )
 
@@ -49,16 +47,12 @@ func TestGetBatchSignCommand(t *testing.T) {
 	require.NoError(t, err)
 	defer outputFile.Close()
 
-	kb, _, err := createKeybaseWithMultisigAccount(tempDir)
-	require.NoError(t, err)
-
-	multiInfo, err := kb.Get("multi")
+	_, _, err = createKeybaseWithMultisigAccount(tempDir)
 	require.NoError(t, err)
 
 	viper.Reset()
 	viper.Set(flags.FlagHome, tempDir)
 	viper.Set(flags.FlagFrom, "key1")
-	viper.Set(cli.FlagMultisig, multiInfo.GetAddress())
 	viper.Set(cli.FlagPassPhrase, passphrase)
 	viper.Set(flags.FlagOutputDocument, outputFile.Name())
 	viper.Set(flags.FlagAccountNumber, accountnumber)
@@ -78,6 +72,46 @@ func TestGetBatchSignCommand(t *testing.T) {
 	require.NoError(t, err)
 
 	validateSignatures(t, cdc, inputFile, outputFile)
+}
+
+func TestGetBatchSignCommand_Multisign(t *testing.T) {
+	cdc := getCodec()
+
+	err := mockStdin(t, "./testdata/cmd-stdin")
+	require.NoError(t, err)
+
+	cmd := cli.GetBatchSignCommand(cdc)
+
+	tempDir, cleanFunc := tests.NewTestCaseDir(t)
+	t.Cleanup(cleanFunc)
+
+	outputFile, err := os.Create(filepath.Join(tempDir, "the-output"))
+	require.NoError(t, err)
+	defer outputFile.Close()
+
+	kb, _, err := createKeybaseWithMultisigAccount(tempDir)
+	require.NoError(t, err)
+
+	multiInfo, err := kb.Get("multi")
+	require.NoError(t, err)
+
+	viper.Reset()
+	viper.Set(flags.FlagHome, tempDir)
+	viper.Set(flags.FlagFrom, "key1")
+	viper.Set(cli.FlagPassPhrase, passphrase)
+	viper.Set(flags.FlagOutputDocument, outputFile.Name())
+	viper.Set(flags.FlagAccountNumber, accountnumber)
+	viper.Set(flags.FlagSequence, sequence)
+	viper.Set(flags.FlagChainID, chainId)
+	viper.Set(flags.FlagTrustNode, true)
+	viper.Set(cli.FlagMultisig, multiInfo.GetAddress())
+
+	cmd.SetArgs([]string{
+		"./testdata/txs-multi.json",
+	})
+
+	err = cmd.Execute()
+	require.NoError(t, err)
 }
 
 func mockStdin(t *testing.T, inputFile string) error {
@@ -179,7 +213,9 @@ func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKe
 		return nil, nil, err
 	}
 
-	_, err = kb.CreateAccount(
+	var pubKeys []crypto.PubKey
+
+	ac, err := kb.CreateAccount(
 		"key1",
 		"orbit juice speak next refuse ten capable release inherit tuna spawn inherit topple shoot rebuild merit door deal salute wire traffic want oxygen sustain",
 		"",
@@ -190,35 +226,22 @@ func createKeybaseWithMultisigAccount(dir string) (keys2.Keybase, []crypto.PubKe
 	if err != nil {
 		return nil, nil, err
 	}
+	pubKeys = append(pubKeys, ac.GetPubKey())
 
-	var pubKeys []crypto.PubKey
-	for i := 0; i < 4; i++ {
-		entropySeed, err := bip39.NewEntropy(256)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		mnemonic, err := bip39.NewMnemonic(entropySeed[:])
-		if err != nil {
-			return nil, nil, err
-		}
-
-		account, err := kb.CreateAccount(
-			fmt.Sprintf("acc%d", i),
-			mnemonic,
-			"",
-			passphrase,
-			0,
-			0,
-		)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		pubKeys = append(pubKeys, account.GetPubKey())
+	ac, err = kb.CreateAccount(
+		"key2",
+		"sniff spoon rhythm affair begin crime love wrong elbow bus alien borrow fit buddy fatal anger elevator track toe will magic deputy patient camera",
+		"",
+		passphrase,
+		0,
+		0,
+	)
+	if err != nil {
+		return nil, nil, err
 	}
+	pubKeys = append(pubKeys, ac.GetPubKey())
 
-	pk := multisig.NewPubKeyMultisigThreshold(2, pubKeys)
+	pk := multisig.NewPubKeyMultisigThreshold(1, pubKeys)
 	if _, err := kb.CreateMulti("multi", pk); err != nil {
 		return nil, nil, err
 	}
@@ -236,12 +259,12 @@ func TestGetBatchSignCommand_Error(t *testing.T) {
 	}{
 		{
 			name:          "invalid signing account",
-			errorContains: "tx intended signer does not match the given signer: acc1",
+			errorContains: "tx intended signer does not match the given signer: key2",
 			keybasePrep: func(tempDir string) {
 				createKeybaseWithMultisigAccount(tempDir)
 			},
 			providedFlags: map[string]interface{}{
-				flags.FlagFrom:          "acc1", // Expects key1
+				flags.FlagFrom:          "key2", // Expects key1
 				cli.FlagPassPhrase:      passphrase,
 				flags.FlagAccountNumber: 50,
 				flags.FlagSequence:      50,

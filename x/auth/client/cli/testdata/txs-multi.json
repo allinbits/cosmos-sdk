@@ -1,0 +1,1 @@
+{"type":"cosmos-sdk/StdTx","value":{"msg":[{"type":"cosmos-sdk/MsgUndelegate","value":{"delegator_address":"cosmos1mcktkamq6rm556gktv3vdh8s2fs7hfnkegptxg","validator_address":"cosmosvaloper1skrwaxteuhsf606xcryrnhzqu07zp3xhu230ff","amount":{"denom":"uatom","amount":"100000000"}}}],"fee":{"amount":[{"denom":"uatom","amount":"4000"}],"gas":"200000"},"signatures":null,"memo":""}}
