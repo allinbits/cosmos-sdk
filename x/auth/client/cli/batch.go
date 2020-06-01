@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -38,6 +40,11 @@ This command is intended to work offline for security purposes.`,
 	cmd.Flags().String(client.FlagOutputDocument, "",
 		"write the result to the given file instead of the default location")
 
+	cmd.Flags().String(
+		FlagMultisig, "",
+		"Address of the multisig account on behalf of which the transaction shall be signed",
+	)
+
 	return flags.PostCommands(cmd)[0]
 }
 
@@ -56,10 +63,29 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 			return errors.Wrap(err, "error extracting txs from file")
 		}
 
+		multisigAddrStr := viper.GetString(FlagMultisig)
+
 		for _, tx := range txs {
-			stdTx, err := utils.SignStdTx(txBldr, cliCtx, viper.GetString(flags.FlagFrom), tx, false, true)
-			if err != nil {
-				return errors.Wrap(err, "error signing stdTx")
+			var stdTx types.StdTx
+			if multisigAddrStr != "" {
+				var multisigAddr sdk.AccAddress
+
+				multisigAddr, err = sdk.AccAddressFromBech32(multisigAddrStr)
+				if err != nil {
+					return err
+				}
+
+				stdTx, err = utils.SignStdTxWithSignerAddress(
+					txBldr, cliCtx, multisigAddr, cliCtx.GetFromName(), tx, true,
+				)
+				if err != nil {
+					return errors.Wrap(err, "error signing stdTx")
+				}
+			} else {
+				stdTx, err = utils.SignStdTx(txBldr, cliCtx, viper.GetString(flags.FlagFrom), tx, false, true)
+				if err != nil {
+					return errors.Wrap(err, "error signing stdTx")
+				}
 			}
 
 			json, err := cdc.MarshalJSON(stdTx.GetSignatures()[0])
