@@ -105,7 +105,7 @@ func setOutput() (io.Writer, error) {
 		return os.Stdout, nil
 	}
 
-	out, err := os.OpenFile(outputFlag, os.O_RDWR, 0644)
+	out, err := os.Create(outputFlag)
 	if err != nil {
 		return nil, err
 	}
