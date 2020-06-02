@@ -280,6 +280,35 @@ func buildTxsFromJsonLines(cdc *codec.Codec, jsonTxs []string) ([]authtypes.StdT
 	return txs, nil
 }
 
+func ReadSignaturesFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdSignature, error) {
+	bz, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(bz), "\n")
+	return buildSigsFromJsonLines(cdc, lines)
+}
+
+func buildSigsFromJsonLines(cdc *codec.Codec, jsonSigs []string) ([]authtypes.StdSignature, error) {
+	var signatures []authtypes.StdSignature
+
+	for _, jsonSig := range jsonSigs {
+		if len(jsonSig) == 0 {
+			break
+		}
+
+		var tx authtypes.StdSignature
+		err := cdc.UnmarshalJSON([]byte(jsonSig), &tx)
+		if err != nil {
+			return nil, err
+		}
+		signatures = append(signatures, tx)
+	}
+
+	return signatures, nil
+}
+
 func populateAccountFromState(
 	txBldr authtypes.TxBuilder, cliCtx context.CLIContext, addr sdk.AccAddress,
 ) (authtypes.TxBuilder, error) {
