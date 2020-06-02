@@ -3,6 +3,8 @@ package cli
 import (
 	"fmt"
 
+	"github.com/tendermint/tendermint/crypto/multisig"
+
 	"github.com/cosmos/cosmos-sdk/client/context"
 	crkeys "github.com/cosmos/cosmos-sdk/crypto/keys"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
@@ -41,7 +43,7 @@ func makeBatchMultisigCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []stri
 		_ = context.NewCLIContext().WithCodec(cdc)
 		txBldr := types.NewTxBuilderFromCLI()
 
-		_, err := setOutput()
+		out, err := setOutput()
 		if err != nil {
 			return errors.Wrap(err, "error with output")
 		}
@@ -59,11 +61,50 @@ func makeBatchMultisigCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []stri
 			return fmt.Errorf("%q must be of type %s: %s", args[1], crkeys.TypeMulti, multisigInfo.GetType())
 		}
 
+		var signatureBatch [][]types.StdSignature
 		for i := 2; i < len(args); i++ {
-			fmt.Printf("%s\n", args[i])
+			signatures, err := utils.ReadSignaturesFromFile(cdc, args[i])
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("error getting signatures from file %s", args[i]))
+			}
+
+			signatureBatch = append(signatureBatch, signatures)
 		}
 
-		fmt.Printf("%v", txs)
+		sequence := txBldr.Sequence()
+		for i, tx := range txs {
+			txBldr = txBldr.WithSequence(sequence)
+			sigBytes := types.StdSignBytes(
+				txBldr.ChainID(), txBldr.AccountNumber(), txBldr.Sequence(),
+				tx.Fee, tx.GetMsgs(), tx.GetMemo(),
+			)
+			multisigPub := multisigInfo.GetPubKey().(multisig.PubKeyMultisigThreshold)
+			multisigSig := multisig.NewMultisig(len(multisigPub.PubKeys))
+
+			for _, signBatch := range signatureBatch {
+				if ok := signBatch[i].PubKey.VerifyBytes(sigBytes, signBatch[i].Signature); !ok {
+					return fmt.Errorf("couldn't verify signature")
+				}
+				if err := multisigSig.AddSignatureFromPubKey(signBatch[i].Signature, signBatch[i].PubKey, multisigPub.PubKeys); err != nil {
+					return err
+				}
+			}
+
+			newStdSig := types.StdSignature{Signature: cdc.MustMarshalBinaryBare(multisigSig), PubKey: multisigPub}
+			newTx := types.NewStdTx(tx.GetMsgs(), tx.Fee, []types.StdSignature{newStdSig}, tx.GetMemo())
+
+			json, err := cdc.MarshalJSON(newTx)
+			if err != nil {
+				return errors.Wrap(err, "error marshalling tx")
+			}
+
+			_, err = fmt.Fprintf(out, "%s\n", json)
+			if err != nil {
+				return errors.Wrap(err, "error writing to output")
+			}
+
+			sequence++
+		}
 
 		return nil
 	}

@@ -45,6 +45,8 @@ func TestGetBatchMultisigCommand(t *testing.T) {
 	viper.Set(flags.FlagHome, tempDir)
 	viper.Set(flags.FlagChainID, "testnet")
 	viper.Set(flags.FlagTrustNode, true)
+	viper.Set(flags.FlagAccountNumber, 1)
+	viper.Set(flags.FlagSequence, 12)
 
 	err = cmd.Execute()
 	require.NoError(t, err)
