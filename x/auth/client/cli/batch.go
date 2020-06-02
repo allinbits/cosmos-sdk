@@ -65,7 +65,10 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 
 		multisigAddrStr := viper.GetString(FlagMultisig)
 
+		sequence := txBldr.Sequence()
 		for _, tx := range txs {
+			txBldr = txBldr.WithSequence(sequence)
+
 			var stdTx types.StdTx
 			if multisigAddrStr != "" {
 				var multisigAddr sdk.AccAddress
@@ -93,6 +96,8 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 			if err != nil {
 				return errors.Wrap(err, "error writing to output")
 			}
+
+			sequence++
 		}
 
 		return nil
