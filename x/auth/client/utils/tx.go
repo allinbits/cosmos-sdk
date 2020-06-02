@@ -261,6 +261,15 @@ func ReadStdTxsFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdTx, e
 	return buildTxsFromJsonLines(cdc, lines)
 }
 
+func ReadSignaturesFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdSignature, error) {
+	bz, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(bz), "\n")
+}
+
 func buildTxsFromJsonLines(cdc *codec.Codec, jsonTxs []string) ([]authtypes.StdTx, error) {
 	var txs []authtypes.StdTx
 
