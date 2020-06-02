@@ -90,6 +90,10 @@ func makeBatchMultisigCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []stri
 			}
 
 			newStdSig := types.StdSignature{Signature: cdc.MustMarshalBinaryBare(multisigSig), PubKey: multisigPub}
+			if ok := newStdSig.VerifyBytes(sigBytes, newStdSig.Signature); !ok {
+				return fmt.Errorf("error verifying multisig signature")
+			}
+
 			newTx := types.NewStdTx(tx.GetMsgs(), tx.Fee, []types.StdSignature{newStdSig}, tx.GetMemo())
 
 			json, err := cdc.MarshalJSON(newTx)
