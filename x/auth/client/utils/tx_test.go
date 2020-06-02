@@ -147,6 +147,19 @@ func TestReadStdTxsFromFile(t *testing.T) {
 	)
 }
 
+func TestReadSignaturesFromFile(t *testing.T) {
+	cdc := codec.New()
+	sdk.RegisterCodec(cdc)
+	types.RegisterCodec(cdc)
+	authtypes.RegisterCodec(cdc)
+	codec.RegisterCrypto(cdc)
+
+	sigsFromFile, err := ReadSignaturesFromFile(cdc, "./testdata/signatures")
+	require.NoError(t, err)
+
+	assert.Len(t, sigsFromFile, 10)
+}
+
 func compareEncoders(t *testing.T, expected sdk.TxEncoder, actual sdk.TxEncoder) {
 	msgs := []sdk.Msg{sdk.NewTestMsg(addr)}
 	tx := authtypes.NewStdTx(msgs, authtypes.StdFee{}, []authtypes.StdSignature{}, "")

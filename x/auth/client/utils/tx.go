@@ -261,15 +261,6 @@ func ReadStdTxsFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdTx, e
 	return buildTxsFromJsonLines(cdc, lines)
 }
 
-func ReadSignaturesFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdSignature, error) {
-	bz, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	lines := strings.Split(string(bz), "\n")
-}
-
 func buildTxsFromJsonLines(cdc *codec.Codec, jsonTxs []string) ([]authtypes.StdTx, error) {
 	var txs []authtypes.StdTx
 
@@ -287,6 +278,35 @@ func buildTxsFromJsonLines(cdc *codec.Codec, jsonTxs []string) ([]authtypes.StdT
 	}
 
 	return txs, nil
+}
+
+func ReadSignaturesFromFile(cdc *codec.Codec, filename string) ([]authtypes.StdSignature, error) {
+	bz, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(bz), "\n")
+	return buildSigsFromJsonLines(cdc, lines)
+}
+
+func buildSigsFromJsonLines(cdc *codec.Codec, jsonSigs []string) ([]authtypes.StdSignature, error) {
+	var signatures []authtypes.StdSignature
+
+	for _, jsonSig := range jsonSigs {
+		if len(jsonSig) == 0 {
+			break
+		}
+
+		var tx authtypes.StdSignature
+		err := cdc.UnmarshalJSON([]byte(jsonSig), &tx)
+		if err != nil {
+			return nil, err
+		}
+		signatures = append(signatures, tx)
+	}
+
+	return signatures, nil
 }
 
 func populateAccountFromState(
