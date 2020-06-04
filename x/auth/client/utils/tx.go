@@ -201,6 +201,38 @@ func SignStdTx(
 	return txBldr.SignStdTx(name, passphrase, stdTx, appendSig)
 }
 
+// SignStdTxWithPassphrase appends a signature to a StdTx and returns a copy of it. If appendSig
+// is false, it replaces the signatures already attached with the new signature.
+// Don't perform online validation or lookups if offline is true.
+func SignStdTxWithPassphrase(
+	txBldr authtypes.TxBuilder, cliCtx context.CLIContext, name string,
+	stdTx authtypes.StdTx, appendSig bool, offline bool, passphrase string,
+) (authtypes.StdTx, error) {
+
+	var signedStdTx authtypes.StdTx
+
+	info, err := txBldr.Keybase().Get(name)
+	if err != nil {
+		return signedStdTx, err
+	}
+
+	addr := info.GetPubKey().Address()
+
+	// check whether the address is a signer
+	if !isTxSigner(sdk.AccAddress(addr), stdTx.GetSigners()) {
+		return signedStdTx, fmt.Errorf("%s: %s", errInvalidSigner, name)
+	}
+
+	if !offline {
+		txBldr, err = populateAccountFromState(txBldr, cliCtx, sdk.AccAddress(addr))
+		if err != nil {
+			return signedStdTx, err
+		}
+	}
+
+	return txBldr.SignStdTx(name, passphrase, stdTx, appendSig)
+}
+
 // SignStdTxWithSignerAddress attaches a signature to a StdTx and returns a copy of a it.
 // Don't perform online validation or lookups if offline is true, else
 // populate account and sequence numbers from a foreign account.
@@ -223,6 +255,28 @@ func SignStdTxWithSignerAddress(txBldr authtypes.TxBuilder, cliCtx context.CLICo
 	passphrase, err := keys.GetPassphrase(name)
 	if err != nil {
 		return signedStdTx, err
+	}
+
+	return txBldr.SignStdTx(name, passphrase, stdTx, false)
+}
+
+// SignStdTxWithSignerAddressWithPassphrase attaches a signature to a StdTx and returns a copy of a it.
+// Don't perform online validation or lookups if offline is true, else
+// populate account and sequence numbers from a foreign account.
+func SignStdTxWithSignerAddressWithPassphrase(txBldr authtypes.TxBuilder, cliCtx context.CLIContext,
+	addr sdk.AccAddress, name string, stdTx authtypes.StdTx,
+	offline bool, passphrase string) (signedStdTx authtypes.StdTx, err error) {
+
+	// check whether the address is a signer
+	if !isTxSigner(addr, stdTx.GetSigners()) {
+		return signedStdTx, fmt.Errorf("%s: %s", errInvalidSigner, name)
+	}
+
+	if !offline {
+		txBldr, err = populateAccountFromState(txBldr, cliCtx, addr)
+		if err != nil {
+			return signedStdTx, err
+		}
 	}
 
 	return txBldr.SignStdTx(name, passphrase, stdTx, false)

@@ -5,8 +5,6 @@ import (
 	"io"
 	"os"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
-
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -14,7 +12,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/context"
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/client/keys"
 	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 )
@@ -65,6 +65,11 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 
 		multisigAddrStr := viper.GetString(FlagMultisig)
 
+		passphrase, err := keys.GetPassphrase(viper.GetString(client.FlagFrom))
+		if err != nil {
+			return err
+		}
+
 		sequence := txBldr.Sequence()
 		for _, tx := range txs {
 			txBldr = txBldr.WithSequence(sequence)
@@ -78,14 +83,17 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 					return err
 				}
 
-				stdTx, err = utils.SignStdTxWithSignerAddress(
+				stdTx, err = utils.SignStdTxWithSignerAddressWithPassphrase(
 					txBldr, cliCtx, multisigAddr, cliCtx.GetFromName(), tx, true,
+					passphrase,
 				)
 				if err != nil {
 					return errors.Wrap(err, "error signing stdTx")
 				}
 			} else {
-				stdTx, err = utils.SignStdTx(txBldr, cliCtx, viper.GetString(flags.FlagFrom), tx, false, true)
+				stdTx, err = utils.SignStdTxWithPassphrase(
+					txBldr, cliCtx, viper.GetString(flags.FlagFrom),
+					tx, false, true, passphrase)
 				if err != nil {
 					return errors.Wrap(err, "error signing stdTx")
 				}
