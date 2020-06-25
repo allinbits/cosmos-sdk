@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	crkeys "github.com/cosmos/cosmos-sdk/crypto/keys"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/auth/client/utils"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
 )
@@ -82,7 +83,7 @@ func makeBatchMultisigCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []stri
 
 			for _, signBatch := range signatureBatch {
 				if ok := signBatch[i].PubKey.VerifyBytes(sigBytes, signBatch[i].Signature); !ok {
-					return fmt.Errorf("couldn't verify signature")
+					return fmt.Errorf("tx %d: couldn't verify signature for address %q", i, sdk.AccAddress(signBatch[i].PubKey.Address()).String())
 				}
 				if err := multisigSig.AddSignatureFromPubKey(signBatch[i].Signature, signBatch[i].PubKey, multisigPub.PubKeys); err != nil {
 					return err
