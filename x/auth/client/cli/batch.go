@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	FlagPassPhrase = "passphrase"
+	FlagPassPhrase      = "passphrase"
+	flagNoAutoIncrement = "no-auto-increment"
 )
 
 func GetBatchSignCommand(codec *codec.Codec) *cobra.Command {
@@ -39,7 +40,7 @@ This command is intended to work offline for security purposes.`,
 
 	cmd.Flags().String(client.FlagOutputDocument, "",
 		"write the result to the given file instead of the default location")
-
+	cmd.Flags().Bool(flagNoAutoIncrement, false, "disable sequence auto increment")
 	cmd.Flags().String(
 		FlagMultisig, "",
 		"Address of the multisig account on behalf of which the transaction shall be signed",
@@ -103,6 +104,10 @@ func makeBatchSignCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []string) 
 			_, err = fmt.Fprintf(out, "%s\n", json)
 			if err != nil {
 				return errors.Wrap(err, "error writing to output")
+			}
+
+			if viper.GetBool(flagNoAutoIncrement) {
+				continue
 			}
 
 			sequence++
