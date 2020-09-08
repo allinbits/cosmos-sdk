@@ -5,6 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/crypto/multisig"
 
 	"github.com/cosmos/cosmos-sdk/client"
@@ -29,7 +30,7 @@ func GetBatchMultisigCommand(codec *codec.Codec) *cobra.Command {
 
 	cmd.Flags().String(client.FlagOutputDocument, "",
 		"write the result to the given file instead of the default location")
-
+	cmd.Flags().Bool(flagNoAutoIncrement, false, "disable sequence auto increment")
 	cmd.Flags().String(
 		FlagMultisig, "",
 		"Address of the multisig account on behalf of which the transaction shall be signed",
@@ -105,6 +106,10 @@ func makeBatchMultisigCmd(cdc *codec.Codec) func(cmd *cobra.Command, args []stri
 			_, err = fmt.Fprintf(out, "%s\n", json)
 			if err != nil {
 				return errors.Wrap(err, "error writing to output")
+			}
+
+			if viper.GetBool(flagNoAutoIncrement) {
+				continue
 			}
 
 			sequence++
