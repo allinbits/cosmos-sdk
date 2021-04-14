@@ -72,9 +72,8 @@ func testEquivocationHandler(_ interface{}) types.Handler {
 type KeeperTestSuite struct {
 	suite.Suite
 
-	ctx     sdk.Context
-	querier sdk.Querier
-	app     *simapp.SimApp
+	ctx sdk.Context
+	app *simapp.SimApp
 
 	queryClient types.QueryClient
 	stakingHdl  sdk.Handler
@@ -95,7 +94,6 @@ func (suite *KeeperTestSuite) SetupTest() {
 	app.EvidenceKeeper = *evidenceKeeper
 
 	suite.ctx = app.BaseApp.NewContext(checkTx, tmproto.Header{Height: 1})
-	suite.querier = keeper.NewQuerier(*evidenceKeeper, app.LegacyAmino())
 	suite.app = app
 
 	for i, addr := range valAddresses {

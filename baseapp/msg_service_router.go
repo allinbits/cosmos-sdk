@@ -18,7 +18,7 @@ import (
 type MsgServiceRouter struct {
 	interfaceRegistry codectypes.InterfaceRegistry
 	serviceMsgRoutes  map[string]MsgServiceHandler // contains the broken google.Protobuf.Any spec routes
-	msgFullnameToRPC  map[string]MsgServiceHandler // maps tx.msgs.Any.TypeURL to the grpc.Service.Methods
+	msgFullnameToRPC  map[string]string            // maps tx.msgs.Any.TypeURL to the grpc.Service.Methods names saved in serviceMsgRoutes
 }
 
 var _ gogogrpc.Server = &MsgServiceRouter{}
@@ -27,7 +27,7 @@ var _ gogogrpc.Server = &MsgServiceRouter{}
 func NewMsgServiceRouter() *MsgServiceRouter {
 	return &MsgServiceRouter{
 		serviceMsgRoutes: make(map[string]MsgServiceHandler),
-		msgFullnameToRPC: make(map[string]MsgServiceHandler),
+		msgFullnameToRPC: make(map[string]string),
 	}
 }
 
@@ -38,7 +38,7 @@ type MsgServiceHandler = func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result,
 // if not found.
 func (msr *MsgServiceRouter) Handler(methodName string) MsgServiceHandler {
 	handler, ok := msr.serviceMsgRoutes[methodName]
-	if ok {
+	if !ok {
 		return nil
 	}
 	return handler
@@ -50,7 +50,11 @@ func (msr *MsgServiceRouter) HandlerFor(msg sdk.Msg) MsgServiceHandler {
 	if protoName == "" {
 		panic("invalid message name")
 	}
-	handler, ok := msr.msgFullnameToRPC[protoName]
+	routeName, ok := msr.msgFullnameToRPC[protoName]
+	if !ok {
+		return nil
+	}
+	handler, ok := msr.serviceMsgRoutes[routeName]
 	if !ok {
 		return nil
 	}
@@ -125,23 +129,23 @@ func (msr *MsgServiceRouter) RegisterService(gsd *grpc.ServiceDesc, handler inte
 		}
 
 		msr.serviceMsgRoutes[fqMethod] = handler
+	}
+	// TODO(fdymylja): since the old sdk.Handlers are now deprecated, we register the sdk.Msg type URLs as handlers
+	// and map those to their respective handlers. This should be the default way of handling an sdk.Msg
+	// once we remove sdk.ServiceMsg which breaks google.protobuf.Any spec.
+	sd, err := protohelpers.ServiceDescriptorFromGRPCServiceDesc(gsd)
+	if err != nil {
+		panic(err)
+	}
 
-		// TODO(fdymylja): since the old sdk.Handlers are now deprecated, we register the sdk.Msg type URLs as handlers
-		// and map those to their respective handlers. This should be the default way of handling an sdk.Msg
-		// once we remove sdk.ServiceMsg which breaks google.protobuf.Any spec.
-		sd, err := protohelpers.ServiceDescriptorFromGRPCServiceDesc(gsd)
-		if err != nil {
-			panic(err)
-		}
-
-		// here we're just mapping the request fullname, ex: cosmos.bank.MsgSend grpc MsgServer handler
-		// after sdk.ServiceMsg is removed, this will register the request types
-		// in the codec too, which will allow us to remove a lot of boilerplate from codec.go
-		for i := 0; i < sd.Methods().Len(); i++ {
-			md := sd.Methods().Get(i)
-			msgFullname := md.Input().FullName()
-			msr.msgFullnameToRPC[(string)(msgFullname)] = handler
-		}
+	// here we're just mapping the request fullname, ex: cosmos.bank.MsgSend grpc MsgServer handler
+	// after sdk.ServiceMsg is removed, this will register the request types
+	// in the codec too, which will allow us to remove a lot of boilerplate from codec.go
+	for mid := 0; mid < sd.Methods().Len(); mid++ {
+		md := sd.Methods().Get(mid)
+		msgFullname := md.Input().FullName()
+		fqMethod := fmt.Sprintf("/%s/%s", sd.FullName(), md.Name())
+		msr.msgFullnameToRPC[(string)(msgFullname)] = fqMethod
 	}
 }
 
