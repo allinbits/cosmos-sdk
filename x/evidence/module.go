@@ -18,7 +18,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
-	eviclient "github.com/cosmos/cosmos-sdk/x/evidence/client"
 	"github.com/cosmos/cosmos-sdk/x/evidence/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/evidence/keeper"
 	"github.com/cosmos/cosmos-sdk/x/evidence/simulation"
@@ -37,14 +36,6 @@ var (
 
 // AppModuleBasic implements the AppModuleBasic interface for the evidence module.
 type AppModuleBasic struct {
-	evidenceHandlers []eviclient.EvidenceHandler // eviclient evidence submission handlers
-}
-
-// NewAppModuleBasic crates a AppModuleBasic without the codec.
-func NewAppModuleBasic(evidenceHandlers ...eviclient.EvidenceHandler) AppModuleBasic {
-	return AppModuleBasic{
-		evidenceHandlers: evidenceHandlers,
-	}
 }
 
 // Name returns the evidence module's name.
@@ -79,13 +70,8 @@ func (a AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux 
 
 // GetTxCmd returns the evidence module's root tx command.
 func (a AppModuleBasic) GetTxCmd() *cobra.Command {
-	evidenceCLIHandlers := make([]*cobra.Command, len(a.evidenceHandlers))
 
-	for i, evidenceHandler := range a.evidenceHandlers {
-		evidenceCLIHandlers[i] = evidenceHandler.CLIHandler()
-	}
-
-	return cli.GetTxCmd(evidenceCLIHandlers)
+	return cli.GetTxCmd(nil)
 }
 
 // GetQueryCmd returns the evidence module's root query command.
