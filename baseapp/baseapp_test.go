@@ -1,5 +1,15 @@
 package baseapp
 
+import (
+	"encoding/json"
+	"os"
+
+	"github.com/tendermint/tendermint/libs/log"
+	dbm "github.com/tendermint/tm-db"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+)
+
 /*
 import (
 	"bytes"
@@ -37,7 +47,7 @@ var (
 	capKey1 = sdk.NewKVStoreKey("key1")
 	capKey2 = sdk.NewKVStoreKey("key2")
 )
-
+*/
 type paramStore struct {
 	db *dbm.MemDB
 }
@@ -79,6 +89,7 @@ func defaultLogger() log.Logger {
 	return log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "sdk/app")
 }
 
+/*
 func newBaseApp(name string, options ...func(*BaseApp)) *BaseApp {
 	logger := defaultLogger()
 	db := dbm.NewMemDB()
