@@ -2,12 +2,9 @@ package types
 
 import (
 	"reflect"
-	"regexp"
-)
 
-// isAlphaNumeric defines a regular expression for matching against alpha-numeric
-// values.
-var isAlphaNumeric = regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString
+	"github.com/cosmos/cosmos-sdk/pkg/strings"
+)
 
 type attribute struct {
 	ty  reflect.Type
@@ -36,7 +33,7 @@ func (t KeyTable) RegisterType(psp ParamSetPair) KeyTable {
 	if len(psp.Key) == 0 {
 		panic("cannot register ParamSetPair with an parameter empty key")
 	}
-	if !isAlphaNumeric(string(psp.Key)) {
+	if !strings.IsAlphaNumeric(string(psp.Key)) {
 		panic("cannot register ParamSetPair with a non-alphanumeric parameter key")
 	}
 	if psp.ValidatorFn == nil {

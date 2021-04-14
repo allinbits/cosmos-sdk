@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/pkg/protohelpers"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
@@ -16,7 +17,8 @@ import (
 // MsgServiceRouter routes fully-qualified Msg service methods to their handler.
 type MsgServiceRouter struct {
 	interfaceRegistry codectypes.InterfaceRegistry
-	routes            map[string]MsgServiceHandler
+	serviceMsgRoutes  map[string]MsgServiceHandler // contains the broken google.Protobuf.Any spec routes
+	msgFullnameToRPC  map[string]MsgServiceHandler // maps tx.msgs.Any.TypeURL to the grpc.Service.Methods
 }
 
 var _ gogogrpc.Server = &MsgServiceRouter{}
@@ -24,7 +26,8 @@ var _ gogogrpc.Server = &MsgServiceRouter{}
 // NewMsgServiceRouter creates a new MsgServiceRouter.
 func NewMsgServiceRouter() *MsgServiceRouter {
 	return &MsgServiceRouter{
-		routes: map[string]MsgServiceHandler{},
+		serviceMsgRoutes: make(map[string]MsgServiceHandler),
+		msgFullnameToRPC: make(map[string]MsgServiceHandler),
 	}
 }
 
@@ -34,7 +37,24 @@ type MsgServiceHandler = func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result,
 // Handler returns the MsgServiceHandler for a given query route path or nil
 // if not found.
 func (msr *MsgServiceRouter) Handler(methodName string) MsgServiceHandler {
-	return msr.routes[methodName]
+	handler, ok := msr.serviceMsgRoutes[methodName]
+	if ok {
+		return nil
+	}
+	return handler
+}
+
+// HandlerFor returns the handler for the given sdk.Msg
+func (msr *MsgServiceRouter) HandlerFor(msg sdk.Msg) MsgServiceHandler {
+	protoName := proto.MessageName(msg)
+	if protoName == "" {
+		panic("invalid message name")
+	}
+	handler, ok := msr.msgFullnameToRPC[protoName]
+	if !ok {
+		return nil
+	}
+	return handler
 }
 
 // RegisterService implements the gRPC Server.RegisterService method. sd is a gRPC
@@ -44,10 +64,10 @@ func (msr *MsgServiceRouter) Handler(methodName string) MsgServiceHandler {
 // - if it is called before the service `Msg`s have been registered using
 //   RegisterInterfaces,
 // - or if a service is being registered twice.
-func (msr *MsgServiceRouter) RegisterService(sd *grpc.ServiceDesc, handler interface{}) {
+func (msr *MsgServiceRouter) RegisterService(gsd *grpc.ServiceDesc, handler interface{}) {
 	// Adds a top-level query handler based on the gRPC service name.
-	for _, method := range sd.Methods {
-		fqMethod := fmt.Sprintf("/%s/%s", sd.ServiceName, method.MethodName)
+	for _, method := range gsd.Methods {
+		fqMethod := fmt.Sprintf("/%s/%s", gsd.ServiceName, method.MethodName)
 		methodHandler := method.Handler
 
 		// Check that the service Msg fully-qualified method name has already
@@ -72,7 +92,7 @@ func (msr *MsgServiceRouter) RegisterService(sd *grpc.ServiceDesc, handler inter
 		// registered more than once, then we should error. Since we can't
 		// return an error (`Server.RegisterService` interface restriction) we
 		// panic (at startup).
-		_, found := msr.routes[fqMethod]
+		_, found := msr.serviceMsgRoutes[fqMethod]
 		if found {
 			panic(
 				fmt.Errorf(
@@ -83,7 +103,7 @@ func (msr *MsgServiceRouter) RegisterService(sd *grpc.ServiceDesc, handler inter
 			)
 		}
 
-		msr.routes[fqMethod] = func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		handler := func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
 			ctx = ctx.WithEventManager(sdk.NewEventManager())
 			interceptor := func(goCtx context.Context, _ interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 				goCtx = context.WithValue(goCtx, sdk.SdkContextKey, ctx)
@@ -102,6 +122,25 @@ func (msr *MsgServiceRouter) RegisterService(sd *grpc.ServiceDesc, handler inter
 			}
 
 			return sdk.WrapServiceResult(ctx, resMsg, err)
+		}
+
+		msr.serviceMsgRoutes[fqMethod] = handler
+
+		// TODO(fdymylja): since the old sdk.Handlers are now deprecated, we register the sdk.Msg type URLs as handlers
+		// and map those to their respective handlers. This should be the default way of handling an sdk.Msg
+		// once we remove sdk.ServiceMsg which breaks google.protobuf.Any spec.
+		sd, err := protohelpers.ServiceDescriptorFromGRPCServiceDesc(gsd)
+		if err != nil {
+			panic(err)
+		}
+
+		// here we're just mapping the request fullname, ex: cosmos.bank.MsgSend grpc MsgServer handler
+		// after sdk.ServiceMsg is removed, this will register the request types
+		// in the codec too, which will allow us to remove a lot of boilerplate from codec.go
+		for i := 0; i < sd.Methods().Len(); i++ {
+			md := sd.Methods().Get(i)
+			msgFullname := md.Input().FullName()
+			msr.msgFullnameToRPC[(string)(msgFullname)] = handler
 		}
 	}
 }

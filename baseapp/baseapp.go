@@ -699,7 +699,11 @@ func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*s
 			}
 			msgResult, err = handler(ctx, svcMsg.Request)
 		} else {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized message type: %T", msg)
+			handler := app.msgServiceRouter.HandlerFor(msg)
+			if handler == nil {
+				return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized message type: %T", msg)
+			}
+			msgResult, err = handler(ctx, msg)
 		}
 
 		if err != nil {
