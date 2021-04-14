@@ -57,8 +57,6 @@ func TestBasicManager(t *testing.T) {
 
 	require.True(t, errors.Is(errFoo, mm.ValidateGenesis(cdc, nil, wantDefaultGenesis)))
 
-	mm.RegisterRESTRoutes(client.Context{}, &mux.Router{})
-
 	mockCmd := &cobra.Command{Use: "root"}
 	mm.AddTxCommands(mockCmd)
 
