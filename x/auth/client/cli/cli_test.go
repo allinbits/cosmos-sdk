@@ -316,7 +316,7 @@ func (s *IntegrationTestSuite) TestCLISendGenerateSignAndBroadcast() {
 	account, err := val1.ClientCtx.Keyring.Key("newAccount")
 	s.Require().NoError(err)
 
-	sendTokens := sdk.NewCoin(s.cfg.BondDenom, sdk.TokensFromConsensusPower(10))
+	sendTokens := sdk.NewCoin(s.cfg.BondDenom, sdk.TokensFromConsensusPower(10, sdk.NewInt(1)))
 
 	normalGeneratedTx, err := bankcli.MsgSendExec(
 		val1.ClientCtx,
@@ -539,7 +539,7 @@ func (s *IntegrationTestSuite) TestCLIMultisignInsufficientCosigners() {
 func (s *IntegrationTestSuite) TestCLIEncode() {
 	val1 := s.network.Validators[0]
 
-	sendTokens := sdk.NewCoin(s.cfg.BondDenom, sdk.TokensFromConsensusPower(10))
+	sendTokens := sdk.NewCoin(s.cfg.BondDenom, sdk.TokensFromConsensusPower(10, sdk.NewInt(1)))
 
 	normalGeneratedTx, err := bankcli.MsgSendExec(
 		val1.ClientCtx,
