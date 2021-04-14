@@ -20,7 +20,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/params/client/cli"
 	"github.com/cosmos/cosmos-sdk/x/params/keeper"
 	"github.com/cosmos/cosmos-sdk/x/params/simulation"
-	"github.com/cosmos/cosmos-sdk/x/params/types"
 	"github.com/cosmos/cosmos-sdk/x/params/types/proposal"
 )
 
@@ -94,18 +93,8 @@ func (am AppModule) InitGenesis(_ sdk.Context, _ codec.JSONMarshaler, _ json.Raw
 	return []abci.ValidatorUpdate{}
 }
 
-func (AppModule) Route() sdk.Route { return sdk.Route{} }
-
 // GenerateGenesisState performs a no-op.
 func (AppModule) GenerateGenesisState(simState *module.SimulationState) {}
-
-// QuerierRoute returns the x/param module's querier route name.
-func (AppModule) QuerierRoute() string { return types.QuerierRoute }
-
-// LegacyQuerierHandler returns the x/params querier handler.
-func (am AppModule) LegacyQuerierHandler(legacyQuerierCdc *codec.LegacyAmino) sdk.Querier {
-	return keeper.NewQuerier(am.keeper, legacyQuerierCdc)
-}
 
 // RegisterServices registers a gRPC query service to respond to the
 // module-specific gRPC queries.

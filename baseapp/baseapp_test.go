@@ -1,5 +1,6 @@
 package baseapp
 
+/*
 import (
 	"bytes"
 	"encoding/binary"
@@ -538,9 +539,6 @@ func TestBaseAppOptionSeal(t *testing.T) {
 	})
 	require.Panics(t, func() {
 		app.SetFauxMerkleMode()
-	})
-	require.Panics(t, func() {
-		app.SetRouter(NewRouter())
 	})
 }
 
@@ -1942,68 +1940,6 @@ func TestApplySnapshotChunk(t *testing.T) {
 	assert.Equal(t, source.LastCommitID(), target.LastCommitID())
 }
 
-// NOTE: represents a new custom router for testing purposes of WithRouter()
-type testCustomRouter struct {
-	routes sync.Map
-}
-
-func (rtr *testCustomRouter) AddRoute(route sdk.Route) sdk.Router {
-	rtr.routes.Store(route.Path(), route.Handler())
-	return rtr
-}
-
-func (rtr *testCustomRouter) Route(ctx sdk.Context, path string) sdk.Handler {
-	if v, ok := rtr.routes.Load(path); ok {
-		if h, ok := v.(sdk.Handler); ok {
-			return h
-		}
-	}
-	return nil
-}
-
-func TestWithRouter(t *testing.T) {
-	// test increments in the ante
-	anteKey := []byte("ante-key")
-	anteOpt := func(bapp *BaseApp) { bapp.SetAnteHandler(anteHandlerTxTest(t, capKey1, anteKey)) }
-
-	// test increments in the handler
-	deliverKey := []byte("deliver-key")
-	routerOpt := func(bapp *BaseApp) {
-		bapp.SetRouter(&testCustomRouter{routes: sync.Map{}})
-		r := sdk.NewRoute(routeMsgCounter, handlerMsgCounter(t, capKey1, deliverKey))
-		bapp.Router().AddRoute(r)
-	}
-
-	app := setupBaseApp(t, anteOpt, routerOpt)
-	app.InitChain(abci.RequestInitChain{})
-
-	// Create same codec used in txDecoder
-	codec := codec.NewLegacyAmino()
-	registerTestCodec(codec)
-
-	nBlocks := 3
-	txPerHeight := 5
-
-	for blockN := 0; blockN < nBlocks; blockN++ {
-		header := tmproto.Header{Height: int64(blockN) + 1}
-		app.BeginBlock(abci.RequestBeginBlock{Header: header})
-
-		for i := 0; i < txPerHeight; i++ {
-			counter := int64(blockN*txPerHeight + i)
-			tx := newTxCounter(counter, counter)
-
-			txBytes, err := codec.MarshalBinaryBare(tx)
-			require.NoError(t, err)
-
-			res := app.DeliverTx(abci.RequestDeliverTx{Tx: txBytes})
-			require.True(t, res.IsOK(), fmt.Sprintf("%v", res))
-		}
-
-		app.EndBlock(abci.RequestEndBlock{})
-		app.Commit()
-	}
-}
-
 func TestBaseApp_EndBlock(t *testing.T) {
 	db := dbm.NewMemDB()
 	name := t.Name()
@@ -2035,3 +1971,4 @@ func TestBaseApp_EndBlock(t *testing.T) {
 	require.Equal(t, int64(100), res.GetValidatorUpdates()[0].Power)
 	require.Equal(t, cp.Block.MaxGas, res.ConsensusParamUpdates.Block.MaxGas)
 }
+*/

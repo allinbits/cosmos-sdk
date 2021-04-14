@@ -159,15 +159,6 @@ type AppModule interface {
 	// registers
 	RegisterInvariants(sdk.InvariantRegistry)
 
-	// Deprecated: use RegisterServices
-	Route() sdk.Route
-
-	// Deprecated: use RegisterServices
-	QuerierRoute() string
-
-	// Deprecated: use RegisterServices
-	LegacyQuerierHandler(*codec.LegacyAmino) sdk.Querier
-
 	// RegisterServices allows a module to register services
 	RegisterServices(Configurator)
 
@@ -197,14 +188,8 @@ func NewGenesisOnlyAppModule(amg AppModuleGenesis) AppModule {
 // RegisterInvariants is a placeholder function register no invariants
 func (GenesisOnlyAppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 
-// Route empty module message route
-func (GenesisOnlyAppModule) Route() sdk.Route { return sdk.Route{} }
-
 // QuerierRoute returns an empty module querier route
 func (GenesisOnlyAppModule) QuerierRoute() string { return "" }
-
-// LegacyQuerierHandler returns an empty module querier
-func (gam GenesisOnlyAppModule) LegacyQuerierHandler(*codec.LegacyAmino) sdk.Querier { return nil }
 
 // RegisterServices registers all services.
 func (gam GenesisOnlyAppModule) RegisterServices(Configurator) {}
@@ -273,18 +258,6 @@ func (m *Manager) SetOrderEndBlockers(moduleNames ...string) {
 func (m *Manager) RegisterInvariants(ir sdk.InvariantRegistry) {
 	for _, module := range m.Modules {
 		module.RegisterInvariants(ir)
-	}
-}
-
-// RegisterRoutes registers all module routes and module querier routes
-func (m *Manager) RegisterRoutes(router sdk.Router, queryRouter sdk.QueryRouter, legacyQuerierCdc *codec.LegacyAmino) {
-	for _, module := range m.Modules {
-		if r := module.Route(); !r.Empty() {
-			router.AddRoute(r)
-		}
-		if r := module.QuerierRoute(); r != "" {
-			queryRouter.AddRoute(r, module.LegacyQuerierHandler(legacyQuerierCdc))
-		}
 	}
 }
 

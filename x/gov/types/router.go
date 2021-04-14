@@ -2,9 +2,12 @@ package types
 
 import (
 	"fmt"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"regexp"
 )
+
+// IsAlphaNumeric defines a regular expression for matching against alpha-numeric
+// values.
+var isAlphaNumeric = regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString
 
 var _ Router = (*router)(nil)
 
@@ -46,7 +49,7 @@ func (rtr *router) AddRoute(path string, h Handler) Router {
 		panic("router sealed; cannot add route handler")
 	}
 
-	if !sdk.IsAlphaNumeric(path) {
+	if !isAlphaNumeric(path) {
 		panic("route expressions can only contain alphanumeric characters")
 	}
 	if rtr.HasRoute(path) {

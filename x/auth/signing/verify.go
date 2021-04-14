@@ -29,7 +29,8 @@ func VerifySignature(pubKey cryptotypes.PubKey, signerData SignerData, sigData s
 			return fmt.Errorf("expected %T, got %T", (multisig.PubKey)(nil), pubKey)
 		}
 		err := multiPK.VerifyMultisignature(func(mode signing.SignMode) ([]byte, error) {
-			return handler.GetSignBytes(mode, signerData, tx)
+			signBytes, err := handler.GetSignBytes(mode, signerData, tx)
+			return signBytes, err
 		}, data)
 		if err != nil {
 			return err
