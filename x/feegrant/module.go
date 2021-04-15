@@ -131,11 +131,6 @@ func (am AppModule) NewHandler() sdk.Handler {
 	return nil
 }
 
-// QuerierRoute returns the feegrant module's querier route name.
-func (AppModule) QuerierRoute() string {
-	return ""
-}
-
 // InitGenesis performs genesis initialization for the feegrant module. It returns
 // no validator updates.
 func (am AppModule) InitGenesis(ctx sdk.Context, cdc codec.JSONMarshaler, bz json.RawMessage) []abci.ValidatorUpdate {
