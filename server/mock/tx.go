@@ -5,9 +5,15 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
+
+func init() {
+	proto.RegisterType(&kvstoreTx{}, "server.mock.KvStoreTx")
+}
 
 // An sdk.Tx which is its own sdk.Msg.
 type kvstoreTx struct {
@@ -20,6 +26,9 @@ type kvstoreTx struct {
 func (msg kvstoreTx) Reset()         {}
 func (msg kvstoreTx) String() string { return "TODO" }
 func (msg kvstoreTx) ProtoMessage()  {}
+func (msg kvstoreTx) XXX_MessageName() string {
+	return "server.mock.KvStoreTx"
+}
 
 var _ sdk.Tx = kvstoreTx{}
 var _ sdk.Msg = kvstoreTx{}

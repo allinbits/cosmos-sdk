@@ -1,14 +1,6 @@
 package mock
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/tendermint/abci/types"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
-)
-
+/*
 // TestInitApp makes sure we can initialize this thing without an error
 func TestInitApp(t *testing.T) {
 	// set up an app
@@ -76,3 +68,5 @@ func TestDeliverTx(t *testing.T) {
 	require.Equal(t, uint32(0), qres.Code, qres.Log)
 	require.Equal(t, []byte(value), qres.Value)
 }
+
+*/
