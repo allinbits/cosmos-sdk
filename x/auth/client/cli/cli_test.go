@@ -195,13 +195,15 @@ func (s *IntegrationTestSuite) TestCLISign() {
 	// Cases with different keys are are covered in unit tests of `tx.Sign`.
 	res, err = authtest.TxSignExec(val1.ClientCtx, val1.Address, filenameSigned, chainFlag,
 		sigOnlyFlag, "--overwrite")
+	require.NoError(err)
 	checkSignatures(require, txCfg, res.Bytes(), valInfo.GetPubKey())
+	s.T().Logf("%s", res)
 
 	/****  test flagAmino  ****/
 	res, err = authtest.TxSignExec(val1.ClientCtx, val1.Address, filenameSigned, chainFlag,
 		"--amino=true")
 	require.NoError(err)
-
+	s.T().Logf("%s", res)
 	var txAmino authcli.BroadcastReq
 	err = val1.ClientCtx.LegacyAmino.UnmarshalJSON(res.Bytes(), &txAmino)
 	require.NoError(err)

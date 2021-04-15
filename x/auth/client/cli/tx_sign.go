@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/tx"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authclient "github.com/cosmos/cosmos-sdk/x/auth/client"
 	"github.com/cosmos/cosmos-sdk/x/auth/legacy/legacytx"
@@ -26,6 +27,11 @@ const (
 type BroadcastReq struct {
 	Tx   legacytx.StdTx `json:"tx" yaml:"tx"`
 	Mode string         `json:"mode" yaml:"mode"`
+}
+
+// UnpackInterfaces implements the UnpackInterfacesMessage interface.
+func (m BroadcastReq) UnpackInterfaces(unpacker codectypes.AnyUnpacker) error {
+	return m.Tx.UnpackInterfaces(unpacker)
 }
 
 // GetSignBatchCommand returns the transaction sign-batch command.
