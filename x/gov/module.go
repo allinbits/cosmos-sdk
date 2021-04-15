@@ -75,9 +75,14 @@ func (a AppModuleBasic) RegisterGRPCGatewayRoutes(clientCtx client.Context, mux 
 
 // GetTxCmd returns the root tx command for the gov module.
 func (a AppModuleBasic) GetTxCmd() *cobra.Command {
-	return &cobra.Command{Use: "gov", RunE: func(cmd *cobra.Command, args []string) error {
-		return fmt.Errorf("do not use me")
-	}}
+	// we have removed the proposal handlers for now
+	/*
+		proposalCLIHandlers := make([]*cobra.Command, 0, len(a.proposalHandlers))
+		for _, proposalHandler := range a.proposalHandlers {
+			proposalCLIHandlers = append(proposalCLIHandlers, proposalHandler.CLIHandler())
+		}
+	*/
+	return cli.NewTxCmd(nil)
 }
 
 // GetQueryCmd returns the root query command for the gov module.
