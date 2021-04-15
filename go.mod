@@ -1,6 +1,6 @@
 go 1.15
 
-module github.com/cosmos/cosmos-sdk
+module github.com/allinbits/cosmos-sdk
 
 require (
 	github.com/99designs/keyring v1.1.6
@@ -61,5 +61,5 @@ require (
 )
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.33.2
-
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+replace  github.com/cosmos/cosmos-sdk => github.com/allinbits/cosmos-sdk master
