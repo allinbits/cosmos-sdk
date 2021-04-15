@@ -14,6 +14,9 @@ import (
 	"google.golang.org/protobuf/runtime/protoimpl"
 )
 
+// ServiceDescriptorFromGRPCServiceDesc returns a protoreflect.ServiceDescriptor given a *grpc.ServiceDesc
+// NOTE: dependencies are not built, so if there is the need to get a ServiceDescriptor with transitive dependencies
+// this is not the correct function to use.
 func ServiceDescriptorFromGRPCServiceDesc(sd *grpc.ServiceDesc) (protoreflect.ServiceDescriptor, error) {
 	fd, err := fileDescriptorFromServiceDesc(sd)
 	if err != nil {
@@ -59,6 +62,9 @@ func fileDescriptorFromServiceDesc(sd *grpc.ServiceDesc) (protoreflect.FileDescr
 	return fd, nil
 }
 
+// BuildFileDescriptor returns the protoreflect.FileDescriptor from the given decompressed bytes of a protobuf raw file.
+// if types and files are nil the default global proto registry will be used. In case an empty registry needs to be used
+// then new(protoregistry.Types) and new(protoregistry.Files) can be used.
 func BuildFileDescriptor(decompressedFd []byte, types *protoregistry.Types, files *protoregistry.Files) (fd protoreflect.FileDescriptor, err error) {
 	defer func() {
 		r := recover()
@@ -76,6 +82,8 @@ func BuildFileDescriptor(decompressedFd []byte, types *protoregistry.Types, file
 	return fd, nil
 }
 
+// DecompressFileDescriptor decompresses the given compressed bytes of
+// a protobuf file.
 func DecompressFileDescriptor(compressed []byte) ([]byte, error) {
 	r, err := gzip.NewReader(bytes.NewReader(compressed))
 	if err != nil {
