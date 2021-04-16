@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 
 	gogoproto "github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" // nolint: staticcheck
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -35,9 +35,11 @@ func fileDescriptorFromServiceDesc(sd *grpc.ServiceDesc) (protoreflect.FileDescr
 	switch meta := sd.Metadata.(type) {
 	case string:
 		// TODO please remove this once we switch to protov2
-		compressedFd = gogoproto.FileDescriptor(meta) // check gogoproto registry
+		// check gogoproto registry
+		compressedFd = gogoproto.FileDescriptor(meta)
+		// check protobuf registry
 		if len(compressedFd) == 0 {
-			compressedFd = proto.FileDescriptor(meta) // check protobuf registry
+			compressedFd = proto.FileDescriptor(meta) // nolint: staticcheck
 		}
 	case []byte:
 		compressedFd = meta
