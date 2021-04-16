@@ -48,7 +48,7 @@ func (msr *MsgServiceRouter) Handler(methodName string) MsgServiceHandler {
 func (msr *MsgServiceRouter) HandlerFor(msg sdk.Msg) MsgServiceHandler {
 	protoName := proto.MessageName(msg)
 	if protoName == "" {
-		panic("invalid message name")
+		panic("received a non registered proto message")
 	}
 	routeName, ok := msr.msgFullnameToRPC[protoName]
 	if !ok {
