@@ -3,7 +3,7 @@ package types
 import (
 	"reflect"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/pkg/strings"
 )
 
 type attribute struct {
@@ -33,7 +33,7 @@ func (t KeyTable) RegisterType(psp ParamSetPair) KeyTable {
 	if len(psp.Key) == 0 {
 		panic("cannot register ParamSetPair with an parameter empty key")
 	}
-	if !sdk.IsAlphaNumeric(string(psp.Key)) {
+	if !strings.IsAlphaNumeric(string(psp.Key)) {
 		panic("cannot register ParamSetPair with a non-alphanumeric parameter key")
 	}
 	if psp.ValidatorFn == nil {

@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/pkg/strings"
 )
 
 var _ Router = (*router)(nil)
@@ -46,7 +46,7 @@ func (rtr *router) AddRoute(path string, h Handler) Router {
 		panic("router sealed; cannot add route handler")
 	}
 
-	if !sdk.IsAlphaNumeric(path) {
+	if !strings.IsAlphaNumeric(path) {
 		panic("route expressions can only contain alphanumeric characters")
 	}
 	if rtr.HasRoute(path) {

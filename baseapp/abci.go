@@ -423,9 +423,6 @@ func (app *BaseApp) Query(req abci.RequestQuery) (res abci.ResponseQuery) {
 
 	case "p2p":
 		return handleQueryP2P(app, path)
-
-	case "custom":
-		return handleQueryCustom(app, path, req)
 	}
 
 	return sdkerrors.QueryResult(sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "unknown query path"))
@@ -821,43 +818,6 @@ func handleQueryP2P(app *BaseApp, path []string) abci.ResponseQuery {
 			sdkerrors.ErrUnknownRequest, "expected path is p2p filter <addr|id> <parameter>",
 		),
 	)
-}
-
-func handleQueryCustom(app *BaseApp, path []string, req abci.RequestQuery) abci.ResponseQuery {
-	// path[0] should be "custom" because "/custom" prefix is required for keeper
-	// queries.
-	//
-	// The QueryRouter routes using path[1]. For example, in the path
-	// "custom/gov/proposal", QueryRouter routes using "gov".
-	if len(path) < 2 || path[1] == "" {
-		return sdkerrors.QueryResult(sdkerrors.Wrap(sdkerrors.ErrUnknownRequest, "no route for custom query specified"))
-	}
-
-	querier := app.queryRouter.Route(path[1])
-	if querier == nil {
-		return sdkerrors.QueryResult(sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "no custom querier found for route %s", path[1]))
-	}
-
-	ctx, err := app.createQueryContext(req.Height, req.Prove)
-	if err != nil {
-		return sdkerrors.QueryResult(err)
-	}
-
-	// Passes the rest of the path as an argument to the querier.
-	//
-	// For example, in the path "custom/gov/proposal/test", the gov querier gets
-	// []string{"proposal", "test"} as the path.
-	resBytes, err := querier(ctx, path[2:], req)
-	if err != nil {
-		res := sdkerrors.QueryResult(err)
-		res.Height = req.Height
-		return res
-	}
-
-	return abci.ResponseQuery{
-		Height: req.Height,
-		Value:  resBytes,
-	}
 }
 
 // splitPath splits a string path using the delimiter '/'.

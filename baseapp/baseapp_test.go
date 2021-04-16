@@ -9,11 +9,11 @@ import (
 	"math/rand"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -86,6 +86,19 @@ func newBaseApp(name string, options ...func(*BaseApp)) *BaseApp {
 	return NewBaseApp(name, logger, db, testTxDecoder(codec), options...)
 }
 
+func registerHandler(msg sdk.MsgRequest, handler MsgServiceHandler) func(baseApp *BaseApp) {
+	return func(baseApp *BaseApp) {
+		name := proto.MessageName(msg)
+		if name == "" {
+			panic(fmt.Sprintf("unregistered proto message: %s", msg))
+		}
+		// this message might not be a service msg so we register an alias to the handler
+		// this is a hack since ATM we're still testing with improper semantics.
+		baseApp.msgServiceRouter.serviceMsgRoutes[name] = handler
+		baseApp.msgServiceRouter.msgFullnameToRPC[name] = name
+	}
+}
+
 func registerTestCodec(cdc *codec.LegacyAmino) {
 	// register Tx, Msg
 	sdk.RegisterLegacyAminoCodec(cdc)
@@ -124,12 +137,14 @@ func setupBaseApp(t *testing.T, options ...func(*BaseApp)) *BaseApp {
 func setupBaseAppWithSnapshots(t *testing.T, blocks uint, blockTxs int, options ...func(*BaseApp)) (*BaseApp, func()) {
 	codec := codec.NewLegacyAmino()
 	registerTestCodec(codec)
+
 	routerOpt := func(bapp *BaseApp) {
-		bapp.Router().AddRoute(sdk.NewRoute(routeMsgKeyValue, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
+		bapp.msgServiceRouter.serviceMsgRoutes[msgKeyValue{}.XXX_MessageName()] = func(ctx sdk.Context, msg sdk.MsgRequest) (*sdk.Result, error) {
 			kv := msg.(*msgKeyValue)
 			bapp.cms.GetCommitKVStore(capKey2).Set(kv.Key, kv.Value)
 			return &sdk.Result{}, nil
-		}))
+		}
+		bapp.msgServiceRouter.msgFullnameToRPC[msgKeyValue{}.XXX_MessageName()] = msgKeyValue{}.XXX_MessageName()
 	}
 
 	snapshotInterval := uint64(2)
@@ -539,9 +554,6 @@ func TestBaseAppOptionSeal(t *testing.T) {
 	require.Panics(t, func() {
 		app.SetFauxMerkleMode()
 	})
-	require.Panics(t, func() {
-		app.SetRouter(NewRouter())
-	})
 }
 
 func TestSetMinGasPrices(t *testing.T) {
@@ -698,12 +710,6 @@ func (tx *txTest) setFailOnHandler(fail bool) {
 func (tx txTest) GetMsgs() []sdk.Msg   { return tx.Msgs }
 func (tx txTest) ValidateBasic() error { return nil }
 
-const (
-	routeMsgCounter  = "msgCounter"
-	routeMsgCounter2 = "msgCounter2"
-	routeMsgKeyValue = "msgKeyValue"
-)
-
 // ValidateBasic() fails on negative counters.
 // Otherwise it's up to the handlers
 type msgCounter struct {
@@ -715,9 +721,12 @@ type msgCounter struct {
 func (msg msgCounter) Reset()         {}
 func (msg msgCounter) String() string { return "TODO" }
 func (msg msgCounter) ProtoMessage()  {}
+func (msg msgCounter) XXX_MessageName() string {
+	return "cosmos-sdk/baseapp/msgCounter"
+}
 
 // Implements Msg
-func (msg msgCounter) Route() string                { return routeMsgCounter }
+func (msg msgCounter) Route() string                { return "" }
 func (msg msgCounter) Type() string                 { return "counter1" }
 func (msg msgCounter) GetSignBytes() []byte         { return nil }
 func (msg msgCounter) GetSigners() []sdk.AccAddress { return nil }
@@ -742,6 +751,10 @@ type msgNoRoute struct {
 	msgCounter
 }
 
+func (tx msgNoRoute) XXX_MessageName() string {
+	return "idontexist"
+}
+
 func (tx msgNoRoute) Route() string { return "noroute" }
 
 // a msg we dont know how to decode
@@ -749,7 +762,7 @@ type msgNoDecode struct {
 	msgCounter
 }
 
-func (tx msgNoDecode) Route() string { return routeMsgCounter }
+func (tx msgNoDecode) Route() string { return "" }
 
 // Another counter msg. Duplicate of msgCounter
 type msgCounter2 struct {
@@ -760,9 +773,12 @@ type msgCounter2 struct {
 func (msg msgCounter2) Reset()         {}
 func (msg msgCounter2) String() string { return "TODO" }
 func (msg msgCounter2) ProtoMessage()  {}
+func (msg msgCounter2) XXX_MessageName() string {
+	return "cosmos-sdk/baseapp/msgCounter2"
+}
 
 // Implements Msg
-func (msg msgCounter2) Route() string                { return routeMsgCounter2 }
+func (msg msgCounter2) Route() string                { return "" }
 func (msg msgCounter2) Type() string                 { return "counter2" }
 func (msg msgCounter2) GetSignBytes() []byte         { return nil }
 func (msg msgCounter2) GetSigners() []sdk.AccAddress { return nil }
@@ -782,7 +798,8 @@ type msgKeyValue struct {
 func (msg msgKeyValue) Reset()                       {}
 func (msg msgKeyValue) String() string               { return "TODO" }
 func (msg msgKeyValue) ProtoMessage()                {}
-func (msg msgKeyValue) Route() string                { return routeMsgKeyValue }
+func (msg msgKeyValue) XXX_MessageName() string      { return "cosmos-sdk/baseapp/msgKeyValue" }
+func (msg msgKeyValue) Route() string                { return "" }
 func (msg msgKeyValue) Type() string                 { return "keyValue" }
 func (msg msgKeyValue) GetSignBytes() []byte         { return nil }
 func (msg msgKeyValue) GetSigners() []sdk.AccAddress { return nil }
@@ -844,8 +861,8 @@ func counterEvent(evType string, msgCount int64) sdk.Events {
 	}
 }
 
-func handlerMsgCounter(t *testing.T, capKey sdk.StoreKey, deliverKey []byte) sdk.Handler {
-	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
+func handlerMsgCounter(t *testing.T, capKey sdk.StoreKey, deliverKey []byte) MsgServiceHandler {
+	return func(ctx sdk.Context, msg sdk.MsgRequest) (*sdk.Result, error) {
 		ctx = ctx.WithEventManager(sdk.NewEventManager())
 		store := ctx.KVStore(capKey)
 		var msgCount int64
@@ -917,12 +934,10 @@ func TestCheckTx(t *testing.T) {
 	counterKey := []byte("counter-key")
 
 	anteOpt := func(bapp *BaseApp) { bapp.SetAnteHandler(anteHandlerTxTest(t, capKey1, counterKey)) }
-	routerOpt := func(bapp *BaseApp) {
-		// TODO: can remove this once CheckTx doesnt process msgs.
-		bapp.Router().AddRoute(sdk.NewRoute(routeMsgCounter, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-			return &sdk.Result{}, nil
-		}))
-	}
+
+	routerOpt := registerHandler(msgCounter{}, func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		return &sdk.Result{}, nil
+	})
 
 	app := setupBaseApp(t, anteOpt, routerOpt)
 
@@ -968,10 +983,8 @@ func TestDeliverTx(t *testing.T) {
 
 	// test increments in the handler
 	deliverKey := []byte("deliver-key")
-	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, handlerMsgCounter(t, capKey1, deliverKey))
-		bapp.Router().AddRoute(r)
-	}
+
+	routerOpt := registerHandler(msgCounter{}, handlerMsgCounter(t, capKey1, deliverKey))
 
 	app := setupBaseApp(t, anteOpt, routerOpt)
 	app.InitChain(abci.RequestInitChain{})
@@ -1022,14 +1035,11 @@ func TestMultiMsgDeliverTx(t *testing.T) {
 	// increment the msg counter
 	deliverKey := []byte("deliver-key")
 	deliverKey2 := []byte("deliver-key2")
-	routerOpt := func(bapp *BaseApp) {
-		r1 := sdk.NewRoute(routeMsgCounter, handlerMsgCounter(t, capKey1, deliverKey))
-		r2 := sdk.NewRoute(routeMsgCounter2, handlerMsgCounter(t, capKey1, deliverKey2))
-		bapp.Router().AddRoute(r1)
-		bapp.Router().AddRoute(r2)
-	}
 
-	app := setupBaseApp(t, anteOpt, routerOpt)
+	routerOpt1 := registerHandler(msgCounter{}, handlerMsgCounter(t, capKey1, deliverKey))
+	routerOpt2 := registerHandler(msgCounter2{}, handlerMsgCounter(t, capKey1, deliverKey2))
+
+	app := setupBaseApp(t, anteOpt, routerOpt1, routerOpt2)
 
 	// Create same codec used in txDecoder
 	codec := codec.NewLegacyAmino()
@@ -1100,13 +1110,10 @@ func TestSimulateTx(t *testing.T) {
 		})
 	}
 
-	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-			ctx.GasMeter().ConsumeGas(gasConsumed, "test")
-			return &sdk.Result{}, nil
-		})
-		bapp.Router().AddRoute(r)
-	}
+	routerOpt := registerHandler(msgCounter{}, func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		ctx.GasMeter().ConsumeGas(gasConsumed, "test")
+		return &sdk.Result{}, nil
+	})
 
 	app := setupBaseApp(t, anteOpt, routerOpt)
 
@@ -1165,12 +1172,10 @@ func TestRunInvalidTransaction(t *testing.T) {
 			return
 		})
 	}
-	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-			return &sdk.Result{}, nil
-		})
-		bapp.Router().AddRoute(r)
-	}
+
+	routerOpt := registerHandler(msgCounter{}, func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		return &sdk.Result{}, nil
+	})
 
 	app := setupBaseApp(t, anteOpt, routerOpt)
 
@@ -1291,14 +1296,11 @@ func TestTxGasLimits(t *testing.T) {
 
 	}
 
-	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-			count := msg.(*msgCounter).Counter
-			ctx.GasMeter().ConsumeGas(uint64(count), "counter-handler")
-			return &sdk.Result{}, nil
-		})
-		bapp.Router().AddRoute(r)
-	}
+	routerOpt := registerHandler(msgCounter{}, func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		count := req.(*msgCounter).Counter
+		ctx.GasMeter().ConsumeGas(uint64(count), "counter-handler")
+		return &sdk.Result{}, nil
+	})
 
 	app := setupBaseApp(t, anteOpt, routerOpt)
 
@@ -1375,14 +1377,11 @@ func TestMaxBlockGasLimits(t *testing.T) {
 		})
 	}
 
-	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-			count := msg.(*msgCounter).Counter
-			ctx.GasMeter().ConsumeGas(uint64(count), "counter-handler")
-			return &sdk.Result{}, nil
-		})
-		bapp.Router().AddRoute(r)
-	}
+	routerOpt := registerHandler(msgCounter{}, func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		count := req.(*msgCounter).Counter
+		ctx.GasMeter().ConsumeGas(uint64(count), "counter-handler")
+		return &sdk.Result{}, nil
+	})
 
 	app := setupBaseApp(t, anteOpt, routerOpt)
 	app.InitChain(abci.RequestInitChain{
@@ -1460,12 +1459,10 @@ func TestCustomRunTxPanicHandler(t *testing.T) {
 			panic(sdkerrors.Wrap(anteErr, "anteHandler"))
 		})
 	}
-	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-			return &sdk.Result{}, nil
-		})
-		bapp.Router().AddRoute(r)
-	}
+
+	routerOpt := registerHandler(msgCounter{}, func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		return &sdk.Result{}, nil
+	})
 
 	app := setupBaseApp(t, anteOpt, routerOpt)
 
@@ -1500,10 +1497,8 @@ func TestBaseAppAnteHandler(t *testing.T) {
 	}
 
 	deliverKey := []byte("deliver-key")
-	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, handlerMsgCounter(t, capKey1, deliverKey))
-		bapp.Router().AddRoute(r)
-	}
+
+	routerOpt := registerHandler(msgCounter{}, handlerMsgCounter(t, capKey1, deliverKey))
 
 	cdc := codec.NewLegacyAmino()
 	app := setupBaseApp(t, anteOpt, routerOpt)
@@ -1596,14 +1591,11 @@ func TestGasConsumptionBadTx(t *testing.T) {
 		})
 	}
 
-	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-			count := msg.(*msgCounter).Counter
-			ctx.GasMeter().ConsumeGas(uint64(count), "counter-handler")
-			return &sdk.Result{}, nil
-		})
-		bapp.Router().AddRoute(r)
-	}
+	routerOpt := registerHandler(msgCounter{}, func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		count := req.(*msgCounter).Counter
+		ctx.GasMeter().ConsumeGas(uint64(count), "counter-handler")
+		return &sdk.Result{}, nil
+	})
 
 	cdc := codec.NewLegacyAmino()
 	registerTestCodec(cdc)
@@ -1651,12 +1643,12 @@ func TestQuery(t *testing.T) {
 	}
 
 	routerOpt := func(bapp *BaseApp) {
-		r := sdk.NewRoute(routeMsgCounter, func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
+		bapp.msgServiceRouter.serviceMsgRoutes[msgCounter{}.XXX_MessageName()] = func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
 			store := ctx.KVStore(capKey1)
 			store.Set(key, value)
 			return &sdk.Result{}, nil
-		})
-		bapp.Router().AddRoute(r)
+		}
+		bapp.msgServiceRouter.msgFullnameToRPC[msgCounter{}.XXX_MessageName()] = msgCounter{}.XXX_MessageName()
 	}
 
 	app := setupBaseApp(t, anteOpt, routerOpt)
@@ -1940,68 +1932,6 @@ func TestApplySnapshotChunk(t *testing.T) {
 
 	// The target should now have the same hash as the source
 	assert.Equal(t, source.LastCommitID(), target.LastCommitID())
-}
-
-// NOTE: represents a new custom router for testing purposes of WithRouter()
-type testCustomRouter struct {
-	routes sync.Map
-}
-
-func (rtr *testCustomRouter) AddRoute(route sdk.Route) sdk.Router {
-	rtr.routes.Store(route.Path(), route.Handler())
-	return rtr
-}
-
-func (rtr *testCustomRouter) Route(ctx sdk.Context, path string) sdk.Handler {
-	if v, ok := rtr.routes.Load(path); ok {
-		if h, ok := v.(sdk.Handler); ok {
-			return h
-		}
-	}
-	return nil
-}
-
-func TestWithRouter(t *testing.T) {
-	// test increments in the ante
-	anteKey := []byte("ante-key")
-	anteOpt := func(bapp *BaseApp) { bapp.SetAnteHandler(anteHandlerTxTest(t, capKey1, anteKey)) }
-
-	// test increments in the handler
-	deliverKey := []byte("deliver-key")
-	routerOpt := func(bapp *BaseApp) {
-		bapp.SetRouter(&testCustomRouter{routes: sync.Map{}})
-		r := sdk.NewRoute(routeMsgCounter, handlerMsgCounter(t, capKey1, deliverKey))
-		bapp.Router().AddRoute(r)
-	}
-
-	app := setupBaseApp(t, anteOpt, routerOpt)
-	app.InitChain(abci.RequestInitChain{})
-
-	// Create same codec used in txDecoder
-	codec := codec.NewLegacyAmino()
-	registerTestCodec(codec)
-
-	nBlocks := 3
-	txPerHeight := 5
-
-	for blockN := 0; blockN < nBlocks; blockN++ {
-		header := tmproto.Header{Height: int64(blockN) + 1}
-		app.BeginBlock(abci.RequestBeginBlock{Header: header})
-
-		for i := 0; i < txPerHeight; i++ {
-			counter := int64(blockN*txPerHeight + i)
-			tx := newTxCounter(counter, counter)
-
-			txBytes, err := codec.MarshalBinaryBare(tx)
-			require.NoError(t, err)
-
-			res := app.DeliverTx(abci.RequestDeliverTx{Tx: txBytes})
-			require.True(t, res.IsOK(), fmt.Sprintf("%v", res))
-		}
-
-		app.EndBlock(abci.RequestEndBlock{})
-		app.Commit()
-	}
 }
 
 func TestBaseApp_EndBlock(t *testing.T) {

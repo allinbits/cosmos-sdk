@@ -60,11 +60,6 @@ func (AppModuleBasic) RegisterInterfaces(registry cdctypes.InterfaceRegistry) {
 	types.RegisterInterfaces(registry)
 }
 
-// LegacyQuerierHandler returns the feegrant module sdk.Querier.
-func (am AppModule) LegacyQuerierHandler(legacyQuerierCdc *codec.LegacyAmino) sdk.Querier {
-	return nil
-}
-
 // DefaultGenesis returns default genesis state as raw bytes for the feegrant
 // module.
 func (AppModuleBasic) DefaultGenesis(cdc codec.JSONMarshaler) json.RawMessage {
@@ -131,19 +126,9 @@ func (AppModule) Name() string {
 // RegisterInvariants registers the feegrant module invariants.
 func (am AppModule) RegisterInvariants(ir sdk.InvariantRegistry) {}
 
-// Route returns the message routing key for the feegrant module.
-func (am AppModule) Route() sdk.Route {
-	return sdk.NewRoute(types.RouterKey, nil)
-}
-
 // NewHandler returns an sdk.Handler for the feegrant module.
 func (am AppModule) NewHandler() sdk.Handler {
 	return nil
-}
-
-// QuerierRoute returns the feegrant module's querier route name.
-func (AppModule) QuerierRoute() string {
-	return ""
 }
 
 // InitGenesis performs genesis initialization for the feegrant module. It returns

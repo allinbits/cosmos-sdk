@@ -29,7 +29,6 @@ import (
 type TestSuite struct {
 	module  module.AppModule
 	keeper  keeper.Keeper
-	querier sdk.Querier
 	handler govtypes.Handler
 	ctx     sdk.Context
 }
@@ -55,7 +54,6 @@ func setupTest(height int64, skip map[int64]bool) TestSuite {
 	s.ctx = app.BaseApp.NewContext(false, tmproto.Header{Height: height, Time: time.Now()})
 
 	s.module = upgrade.NewAppModule(s.keeper)
-	s.querier = s.module.LegacyQuerierHandler(app.LegacyAmino())
 	s.handler = upgrade.NewSoftwareUpgradeProposalHandler(s.keeper)
 	return s
 }
@@ -112,7 +110,7 @@ func VerifyDoUpgrade(t *testing.T) {
 		s.module.BeginBlock(newCtx, req)
 	})
 
-	VerifyCleared(t, newCtx)
+	VerifyCleared(t, newCtx, s.keeper)
 }
 
 func VerifyDoUpgradeWithCtx(t *testing.T, newCtx sdk.Context, proposalName string) {
@@ -130,7 +128,7 @@ func VerifyDoUpgradeWithCtx(t *testing.T, newCtx sdk.Context, proposalName strin
 		s.module.BeginBlock(newCtx, req)
 	})
 
-	VerifyCleared(t, newCtx)
+	VerifyCleared(t, newCtx, s.keeper)
 }
 
 func TestHaltIfTooNew(t *testing.T) {
@@ -166,14 +164,14 @@ func TestHaltIfTooNew(t *testing.T) {
 	})
 	require.Equal(t, 1, called)
 
-	VerifyCleared(t, futCtx)
+	VerifyCleared(t, futCtx, s.keeper)
 }
 
-func VerifyCleared(t *testing.T, newCtx sdk.Context) {
+func VerifyCleared(t *testing.T, newCtx sdk.Context, k keeper.Keeper) {
 	t.Log("Verify that the upgrade plan has been cleared")
-	bz, err := s.querier(newCtx, []string{types.QueryCurrent}, abci.RequestQuery{})
-	require.NoError(t, err)
-	require.Nil(t, bz)
+	plan, exists := k.GetUpgradePlan(newCtx)
+	require.False(t, exists)
+	require.Zero(t, plan)
 }
 
 func TestCanClear(t *testing.T) {
@@ -185,7 +183,7 @@ func TestCanClear(t *testing.T) {
 	err = s.handler(s.ctx, &types.CancelSoftwareUpgradeProposal{Title: "cancel"})
 	require.Nil(t, err)
 
-	VerifyCleared(t, s.ctx)
+	VerifyCleared(t, s.ctx, s.keeper)
 }
 
 func TestCantApplySameUpgradeTwice(t *testing.T) {
@@ -287,7 +285,7 @@ func TestSkipUpgradeSkippingAll(t *testing.T) {
 
 	// To ensure verification is being done only after both upgrades are cleared
 	t.Log("Verify if both proposals are cleared")
-	VerifyCleared(t, s.ctx)
+	VerifyCleared(t, s.ctx, s.keeper)
 	VerifyNotDone(t, s.ctx, "test")
 	VerifyNotDone(t, s.ctx, "test2")
 }
