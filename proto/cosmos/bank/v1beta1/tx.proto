@@ -4,6 +4,7 @@ package cosmos.bank.v1beta1;
 import "gogoproto/gogo.proto";
 import "cosmos/base/v1beta1/coin.proto";
 import "cosmos/bank/v1beta1/bank.proto";
+import "apis/module/module.proto";
 
 option go_package = "github.com/cosmos/cosmos-sdk/x/bank/types";
 
@@ -14,6 +15,19 @@ service Msg {
 
   // MultiSend defines a method for sending coins from some accounts to other accounts.
   rpc MultiSend(MsgMultiSend) returns (MsgMultiSendResponse);
+
+  // SendFromModuleToModule sends coins from module to another module
+  rpc SendFromToModule(MsgSendFromModuleToModule) returns (MsgSendFromModuleToModuleResponse) {
+    option (cosmos.module.internal) = true;
+  };
+}
+
+message MsgSendFromModuleToModule {
+
+}
+
+message MsgSendFromModuleToModuleResponse {
+
 }
 
 // MsgSend represents a message to send coins from one account to another.

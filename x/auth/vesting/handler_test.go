@@ -29,7 +29,7 @@ func (suite *HandlerTestSuite) SetupTest() {
 
 func (suite *HandlerTestSuite) TestMsgCreateVestingAccount() {
 	ctx := suite.app.BaseApp.NewContext(false, tmproto.Header{Height: suite.app.LastBlockHeight() + 1})
-
+	ctx = ctx.WithRouter(suite.app.BaseApp.MsgServiceRouter())
 	balances := sdk.NewCoins(sdk.NewInt64Coin("test", 1000))
 	addr1 := sdk.AccAddress([]byte("addr1_______________"))
 	addr2 := sdk.AccAddress([]byte("addr2_______________"))

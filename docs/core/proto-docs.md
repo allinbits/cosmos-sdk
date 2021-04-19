@@ -4,6 +4,9 @@
 
 ## Table of Contents
 
+- [apis/module/module.proto](#apis/module/module.proto)
+    - [File-level Extensions](#apis/module/module.proto-extensions)
+  
 - [cosmos/auth/v1beta1/auth.proto](#cosmos/auth/v1beta1/auth.proto)
     - [BaseAccount](#cosmos.auth.v1beta1.BaseAccount)
     - [ModuleAccount](#cosmos.auth.v1beta1.ModuleAccount)
@@ -108,6 +111,8 @@
     - [MsgMultiSend](#cosmos.bank.v1beta1.MsgMultiSend)
     - [MsgMultiSendResponse](#cosmos.bank.v1beta1.MsgMultiSendResponse)
     - [MsgSend](#cosmos.bank.v1beta1.MsgSend)
+    - [MsgSendFromModuleToModule](#cosmos.bank.v1beta1.MsgSendFromModuleToModule)
+    - [MsgSendFromModuleToModuleResponse](#cosmos.bank.v1beta1.MsgSendFromModuleToModuleResponse)
     - [MsgSendResponse](#cosmos.bank.v1beta1.MsgSendResponse)
   
     - [Msg](#cosmos.bank.v1beta1.Msg)
@@ -583,6 +588,30 @@
     - [PeriodicVestingAccount](#cosmos.vesting.v1beta1.PeriodicVestingAccount)
   
 - [Scalar Value Types](#scalar-value-types)
+
+
+
+<a name="apis/module/module.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## apis/module/module.proto
+
+
+ <!-- end messages -->
+
+ <!-- end enums -->
+
+
+<a name="apis/module/module.proto-extensions"></a>
+
+### File-level Extensions
+| Extension | Type | Base | Number | Description |
+| --------- | ---- | ---- | ------ | ----------- |
+| `internal` | bool | .google.protobuf.MethodOptions | 110001 | internal communicates to the runtime that the given RPC should not be callable externally but only by modules. |
+
+ <!-- end HasExtensions -->
+
+ <!-- end services -->
 
 
 
@@ -1973,6 +2002,26 @@ MsgSend represents a message to send coins from one account to another.
 
 
 
+<a name="cosmos.bank.v1beta1.MsgSendFromModuleToModule"></a>
+
+### MsgSendFromModuleToModule
+
+
+
+
+
+
+
+<a name="cosmos.bank.v1beta1.MsgSendFromModuleToModuleResponse"></a>
+
+### MsgSendFromModuleToModuleResponse
+
+
+
+
+
+
+
 <a name="cosmos.bank.v1beta1.MsgSendResponse"></a>
 
 ### MsgSendResponse
@@ -1998,6 +2047,7 @@ Msg defines the bank Msg service.
 | ----------- | ------------ | ------------- | ------------| ------- | -------- |
 | `Send` | [MsgSend](#cosmos.bank.v1beta1.MsgSend) | [MsgSendResponse](#cosmos.bank.v1beta1.MsgSendResponse) | Send defines a method for sending coins from one account to another account. | |
 | `MultiSend` | [MsgMultiSend](#cosmos.bank.v1beta1.MsgMultiSend) | [MsgMultiSendResponse](#cosmos.bank.v1beta1.MsgMultiSendResponse) | MultiSend defines a method for sending coins from some accounts to other accounts. | |
+| `SendFromToModule` | [MsgSendFromModuleToModule](#cosmos.bank.v1beta1.MsgSendFromModuleToModule) | [MsgSendFromModuleToModuleResponse](#cosmos.bank.v1beta1.MsgSendFromModuleToModuleResponse) | SendFromModuleToModule sends coins from module to another module | |
 
  <!-- end services -->
 

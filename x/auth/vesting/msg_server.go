@@ -4,6 +4,7 @@ import (
 	"context"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
 
 	"github.com/armon/go-metrics"
 
@@ -17,12 +18,13 @@ import (
 type msgServer struct {
 	keeper.AccountKeeper
 	types.BankKeeper
+	bankMsg bank.MsgClient
 }
 
 // NewMsgServerImpl returns an implementation of the vesting MsgServer interface,
 // wrapping the corresponding AccountKeeper and BankKeeper.
 func NewMsgServerImpl(k keeper.AccountKeeper, bk types.BankKeeper) types.MsgServer {
-	return &msgServer{AccountKeeper: k, BankKeeper: bk}
+	return &msgServer{AccountKeeper: k, BankKeeper: bk, bankMsg: bank.NewMsgClient(sdk.NewModuleClient())}
 }
 
 var _ types.MsgServer = msgServer{}
@@ -84,7 +86,11 @@ func (s msgServer) CreateVestingAccount(goCtx context.Context, msg *types.MsgCre
 		}
 	}()
 
-	err = bk.SendCoins(ctx, from, to, msg.Amount)
+	_, err = s.bankMsg.Send(sdk.WrapSDKContext(ctx), &bank.MsgSend{
+		FromAddress: from.String(),
+		ToAddress:   to.String(),
+		Amount:      msg.Amount,
+	})
 	if err != nil {
 		return nil, err
 	}

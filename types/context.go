@@ -2,25 +2,77 @@ package types
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"google.golang.org/grpc"
 
 	"github.com/cosmos/cosmos-sdk/store/gaskv"
 	stypes "github.com/cosmos/cosmos-sdk/store/types"
 )
 
-/*
-Context is an immutable object contains all information needed to
-process a request.
+type GRPCUnaryInvokerFn func(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error)
 
-It contains a context.Context object inside if you want to use that,
-but please do not over-use it. We try to keep all data structured
-and standard additions here would be better just to add to the Context struct
-*/
+type IntermoduleRouter interface {
+	HandlerForMethod(method string) (handler interface{}, call GRPCUnaryInvokerFn)
+}
+
+func NewModuleClient() *ModuleClient {
+	return &ModuleClient{}
+}
+
+type ModuleClient struct{}
+
+// Invoke implements grpc.ClientConn
+func (m *ModuleClient) Invoke(ctx context.Context, method string, args, reply interface{}, _ ...grpc.CallOption) error {
+	sdkCtx := UnwrapSDKContext(ctx)
+	handler, call := sdkCtx.router.HandlerForMethod(method)
+	if handler == nil || call == nil {
+		panic(fmt.Sprintf("handler not found for type %T", args))
+	}
+	// invoke the method
+	result, err := call(
+		handler,
+		ctx,
+		func(in interface{}) error {
+			// this is a decoder that sets the provided type to decode (in) to the request (args)
+			// we could avoid this reflection overhead by simply ignoring the req argument in the
+			// invoker and simply using args. TODO(fdymylja): What would be the consequences of doing this?
+			vin := reflect.ValueOf(in)
+			vin.Elem().Set(reflect.ValueOf(args).Elem())
+			return nil
+		},
+		func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+			return handler(ctx, req)
+		},
+	)
+	if err != nil {
+		return err
+	}
+	// after we've got the result we must set the reply to result
+	// NOTE: this method will panic in case the reply and result
+	// do not match which is fine, because this should be used only
+	// by generated gRPC client interfaces.
+	replyV := reflect.ValueOf(reply)
+	replyV.Elem().Set(reflect.ValueOf(result).Elem())
+	return nil
+}
+
+// NewStream implements gRPC.ClientConn, but panics if called as we do not support streaming execution as of now.
+func (m *ModuleClient) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+	panic("module clients can not execute stream RPCs")
+}
+
+// Context is an immutable object contains all information needed to
+// process a request.
+// It contains a context.Context object inside if you want to use that,
+// but please do not over-use it. We try to keep all data structured
+// and standard additions here would be better just to add to the Context struct
 type Context struct {
 	ctx           context.Context
 	ms            MultiStore
@@ -36,6 +88,7 @@ type Context struct {
 	minGasPrice   DecCoins
 	consParams    *abci.ConsensusParams
 	eventManager  *EventManager
+	router        IntermoduleRouter
 }
 
 // Proposed rename, not done to avoid API breakage
@@ -193,6 +246,11 @@ func (c Context) WithConsensusParams(params *abci.ConsensusParams) Context {
 // WithEventManager returns a Context with an updated event manager
 func (c Context) WithEventManager(em *EventManager) Context {
 	c.eventManager = em
+	return c
+}
+
+func (c Context) WithRouter(router IntermoduleRouter) Context {
+	c.router = router
 	return c
 }
 

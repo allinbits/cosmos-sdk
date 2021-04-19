@@ -3,11 +3,15 @@ package baseapp
 import (
 	"context"
 	"fmt"
+	"log"
 
 	gogogrpc "github.com/gogo/protobuf/grpc"
-	"github.com/gogo/protobuf/proto"
+	gogoproto "github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/descriptorpb"
 
+	"github.com/cosmos/cosmos-sdk/apis/module"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/pkg/protohelpers"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -17,8 +21,10 @@ import (
 // MsgServiceRouter routes fully-qualified Msg service methods to their handler.
 type MsgServiceRouter struct {
 	interfaceRegistry codectypes.InterfaceRegistry
-	serviceMsgRoutes  map[string]MsgServiceHandler // contains the broken google.Protobuf.Any spec routes
-	msgFullnameToRPC  map[string]string            // maps tx.msgs.Any.TypeURL to the grpc.Service.Methods names saved in serviceMsgRoutes
+	serviceMsgRoutes  map[string]MsgServiceHandler      // contains the broken google.Protobuf.Any spec routes
+	msgFullnameToRPC  map[string]string                 // maps tx.msgs.Any.TypeURL to the grpc.Service.Methods names saved in serviceMsgRoutes
+	rpcInvokers       map[string]sdk.GRPCUnaryInvokerFn // maps a method, example: /bank.MsgServer/Send to the function that invokes the method in the server implementation
+	rpcServer         map[string]interface{}            // maps a method, example: /bank.MsgServer/Send to the server implementation, in this example bank.MsgServer
 }
 
 var _ gogogrpc.Server = &MsgServiceRouter{}
@@ -28,6 +34,8 @@ func NewMsgServiceRouter() *MsgServiceRouter {
 	return &MsgServiceRouter{
 		serviceMsgRoutes: make(map[string]MsgServiceHandler),
 		msgFullnameToRPC: make(map[string]string),
+		rpcServer:        make(map[string]interface{}),
+		rpcInvokers:      make(map[string]sdk.GRPCUnaryInvokerFn),
 	}
 }
 
@@ -46,7 +54,7 @@ func (msr *MsgServiceRouter) Handler(methodName string) MsgServiceHandler {
 
 // HandlerFor returns the handler for the given sdk.Msg
 func (msr *MsgServiceRouter) HandlerFor(msg sdk.Msg) MsgServiceHandler {
-	protoName := proto.MessageName(msg)
+	protoName := gogoproto.MessageName(msg)
 	if protoName == "" {
 		panic("received a non registered proto message")
 	}
@@ -59,6 +67,18 @@ func (msr *MsgServiceRouter) HandlerFor(msg sdk.Msg) MsgServiceHandler {
 		return nil
 	}
 	return handler
+}
+
+func (msr *MsgServiceRouter) HandlerForMethod(method string) (handler interface{}, call sdk.GRPCUnaryInvokerFn) {
+	invoker, exists := msr.rpcInvokers[method]
+	if !exists {
+		return nil, nil
+	}
+	handler, exists = msr.rpcServer[method]
+	if !exists {
+		panic(fmt.Sprintf("invoker for method %s exists but no service implementation was found", method))
+	}
+	return handler, invoker
 }
 
 // RegisterService implements the gRPC Server.RegisterService method. sd is a gRPC
@@ -107,7 +127,7 @@ func (msr *MsgServiceRouter) RegisterService(gsd *grpc.ServiceDesc, handler inte
 			)
 		}
 
-		handler := func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		msgHandler := func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
 			ctx = ctx.WithEventManager(sdk.NewEventManager())
 			interceptor := func(goCtx context.Context, _ interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 				goCtx = context.WithValue(goCtx, sdk.SdkContextKey, ctx)
@@ -120,7 +140,7 @@ func (msr *MsgServiceRouter) RegisterService(gsd *grpc.ServiceDesc, handler inte
 				return nil, err
 			}
 
-			resMsg, ok := res.(proto.Message)
+			resMsg, ok := res.(gogoproto.Message)
 			if !ok {
 				return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidType, "Expecting proto.Message, got %T", resMsg)
 			}
@@ -128,16 +148,20 @@ func (msr *MsgServiceRouter) RegisterService(gsd *grpc.ServiceDesc, handler inte
 			return sdk.WrapServiceResult(ctx, resMsg, err)
 		}
 
-		msr.serviceMsgRoutes[fqMethod] = handler
+		msr.serviceMsgRoutes[fqMethod] = msgHandler
+		msr.rpcInvokers[fqMethod] = func(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+			return methodHandler(srv, ctx, dec, interceptor)
+		}
+		msr.rpcServer[fqMethod] = handler
+		// check if method is internal
 	}
 	// TODO(fdymylja): since the old sdk.Handlers are now deprecated, we register the sdk.Msg type URLs as handlers
 	// and map those to their respective handlers. This should be the default way of handling an sdk.Msg
 	// once we remove sdk.ServiceMsg which breaks google.protobuf.Any spec.
-	sd, err := protohelpers.ServiceDescriptorFromGRPCServiceDesc(gsd)
+	sd, err := protohelpers.ServiceDescriptorFromGRPCServiceDesc(gsd, nil, nil)
 	if err != nil {
 		panic(err)
 	}
-
 	// here we're just mapping the request fullname, ex: cosmos.bank.MsgSend grpc MsgServer handler
 	// after sdk.ServiceMsg is removed, this will register the request types
 	// in the codec too, which will allow us to remove a lot of boilerplate from codec.go
@@ -146,6 +170,15 @@ func (msr *MsgServiceRouter) RegisterService(gsd *grpc.ServiceDesc, handler inte
 		msgFullname := md.Input().FullName()
 		fqMethod := fmt.Sprintf("/%s/%s", sd.FullName(), md.Name())
 		msr.msgFullnameToRPC[(string)(msgFullname)] = fqMethod
+		opt := md.Options().(*descriptorpb.MethodOptions)
+		if opt == nil {
+			continue
+		}
+		xt, err := proto.GetExtension(opt, protohelpers.GogoProtoXtToProtoXt(module.E_Internal))
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("%#v", xt)
 	}
 }
 

@@ -537,8 +537,8 @@ func (app *BaseApp) cacheTxContext(ctx sdk.Context, txBytes []byte) (sdk.Context
 			),
 		).(sdk.CacheMultiStore)
 	}
-
-	return ctx.WithMultiStore(msCache), msCache
+	ctx = ctx.WithMultiStore(msCache)
+	return ctx.WithRouter(app.msgServiceRouter), msCache
 }
 
 // runTx processes a transaction within a given execution mode, encoded transaction

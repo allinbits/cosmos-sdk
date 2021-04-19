@@ -15,6 +15,10 @@ type msgServer struct {
 	Keeper
 }
 
+func (k msgServer) SendFromToModule(ctx context.Context, module *types.MsgSendFromModuleToModule) (*types.MsgSendFromModuleToModuleResponse, error) {
+	panic("implement me")
+}
+
 // NewMsgServerImpl returns an implementation of the bank MsgServer interface
 // for the provided Keeper.
 func NewMsgServerImpl(keeper Keeper) types.MsgServer {
