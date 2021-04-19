@@ -78,7 +78,7 @@ var (
 	}
 )
 
-func createValidators(t *testing.T, stakingHandler sdk.Handler, ctx sdk.Context, addrs []sdk.ValAddress, powerAmt []int64) {
+func createValidators(t *testing.T, stakingHandler stakingtypes.MsgServer, ctx sdk.Context, addrs []sdk.ValAddress, powerAmt []int64) {
 	require.True(t, len(addrs) <= len(pubkeys), "Not enough pubkeys specified at top of file.")
 
 	for i := 0; i < len(addrs); i++ {
@@ -88,12 +88,33 @@ func createValidators(t *testing.T, stakingHandler sdk.Handler, ctx sdk.Context,
 			TestDescription, TestCommissionRates, sdk.OneInt(),
 		)
 		require.NoError(t, err)
-		handleAndCheck(t, stakingHandler, ctx, valCreateMsg)
+		handleMsgCreateValidator(t, stakingHandler, ctx, valCreateMsg)
 	}
 }
 
-func handleAndCheck(t *testing.T, h sdk.Handler, ctx sdk.Context, msg sdk.Msg) {
-	res, err := h(ctx, msg)
+func handleMsgCreateValidator(t *testing.T, h stakingtypes.MsgServer, ctx sdk.Context, msg *stakingtypes.MsgCreateValidator) {
+	res, err := h.CreateValidator(sdk.WrapSDKContext(ctx), msg)
 	require.NoError(t, err)
 	require.NotNil(t, res)
+}
+
+func handleAndCheckGovMsg(t *testing.T, h types.MsgServer, ctx sdk.Context, msg sdk.Msg) {
+	switch m := msg.(type) {
+	case *types.MsgDeposit:
+		res, err := h.Deposit(sdk.WrapSDKContext(ctx), m)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	case *types.MsgVote:
+		res, err := h.Vote(sdk.WrapSDKContext(ctx), m)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	case *types.MsgSubmitProposal:
+		res, err := h.SubmitProposal(sdk.WrapSDKContext(ctx), m)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	case *types.MsgVoteWeighted:
+		res, err := h.VoteWeighted(sdk.WrapSDKContext(ctx), m)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	}
 }

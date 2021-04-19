@@ -15,15 +15,15 @@ import (
 type HandlerTestSuite struct {
 	suite.Suite
 
-	handler sdk.Handler
-	app     *simapp.SimApp
+	msgServer types.MsgServer
+	app       *simapp.SimApp
 }
 
 func (suite *HandlerTestSuite) SetupTest() {
 	checkTx := false
 	app := simapp.Setup(checkTx)
 
-	suite.handler = vesting.NewHandler(app.AccountKeeper, app.BankKeeper)
+	suite.msgServer = vesting.NewMsgServerImpl(app.AccountKeeper, app.BankKeeper)
 	suite.app = app
 }
 
@@ -65,7 +65,7 @@ func (suite *HandlerTestSuite) TestMsgCreateVestingAccount() {
 		tc := tc
 
 		suite.Run(tc.name, func() {
-			res, err := suite.handler(ctx, tc.msg)
+			res, err := suite.msgServer.CreateVestingAccount(sdk.WrapSDKContext(ctx), tc.msg)
 			if tc.expectErr {
 				suite.Require().Error(err)
 			} else {
