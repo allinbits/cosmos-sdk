@@ -87,20 +87,20 @@ func (sh *Helper) Handle(msg sdk.Msg, ok bool) *sdk.Result {
 	var res *sdk.Result
 	switch m := msg.(type) {
 	case *stakingtypes.MsgCreateValidator:
-		r, err := sh.msgServer.CreateValidator(sdk.WrapSDKContext(sh.Ctx), m)
-		res, err = sdk.WrapServiceResult(sh.Ctx, r, err)
+		r, err2 := sh.msgServer.CreateValidator(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
 	case *stakingtypes.MsgEditValidator:
-		r, err := sh.msgServer.EditValidator(sdk.WrapSDKContext(sh.Ctx), m)
-		res, err = sdk.WrapServiceResult(sh.Ctx, r, err)
+		r, err2 := sh.msgServer.EditValidator(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
 	case *stakingtypes.MsgDelegate:
-		r, err := sh.msgServer.Delegate(sdk.WrapSDKContext(sh.Ctx), m)
-		res, err = sdk.WrapServiceResult(sh.Ctx, r, err)
+		r, err2 := sh.msgServer.Delegate(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
 	case *stakingtypes.MsgBeginRedelegate:
-		r, err := sh.msgServer.BeginRedelegate(sdk.WrapSDKContext(sh.Ctx), m)
-		res, err = sdk.WrapServiceResult(sh.Ctx, r, err)
+		r, err2 := sh.msgServer.BeginRedelegate(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
 	case *stakingtypes.MsgUndelegate:
-		r, err := sh.msgServer.Undelegate(sdk.WrapSDKContext(sh.Ctx), m)
-		res, err = sdk.WrapServiceResult(sh.Ctx, r, err)
+		r, err2 := sh.msgServer.Undelegate(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
 	}
 
 	if ok {
