@@ -41,3 +41,4 @@ Mgoogle/protobuf/any.proto=github.com/cosmos/cosmos-sdk/codec/types:. ./testutil
 # move proto files to the right places
 cp -r github.com/cosmos/cosmos-sdk/* ./
 rm -rf github.com
+rm -rf third_party/proto/apis

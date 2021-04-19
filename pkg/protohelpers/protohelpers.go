@@ -7,18 +7,23 @@ import (
 	"io/ioutil"
 
 	gogoproto "github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/proto" // nolint: staticcheck
+	legacyproto "github.com/golang/protobuf/proto" // nolint: staticcheck
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/runtime/protoimpl"
 )
 
-// ServiceDescriptorFromGRPCServiceDesc returns a protoreflect.ServiceDescriptor given a *grpc.ServiceDesc
-// NOTE: dependencies are not built, so if there is the need to get a ServiceDescriptor with transitive dependencies
-// this is not the correct function to use.
-func ServiceDescriptorFromGRPCServiceDesc(sd *grpc.ServiceDesc) (protoreflect.ServiceDescriptor, error) {
-	fd, err := fileDescriptorFromServiceDesc(sd)
+// ServiceDescriptorFromGRPCServiceDesc returns a protoreflect.ServiceDescriptor given
+// a grpc.ServiceDesc. It is optionally possible to provide types and files registry
+// that can then be used to build a descriptor with its dependencies resolved.
+// If types or files are set to nil then the descriptor will not be registered.
+func ServiceDescriptorFromGRPCServiceDesc(
+	sd *grpc.ServiceDesc,
+	files *protoregistry.Files,
+	types *protoregistry.Types,
+) (protoreflect.ServiceDescriptor, error) {
+	fd, err := fileDescriptorFromServiceDesc(sd, files, types)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +35,17 @@ func ServiceDescriptorFromGRPCServiceDesc(sd *grpc.ServiceDesc) (protoreflect.Se
 }
 
 // fileDescriptorFromServiceDesc returns the file descriptor given a gRPC service descriptor
-func fileDescriptorFromServiceDesc(sd *grpc.ServiceDesc) (protoreflect.FileDescriptor, error) {
+func fileDescriptorFromServiceDesc(
+	sd *grpc.ServiceDesc,
+	files *protoregistry.Files,
+	types *protoregistry.Types,
+) (protoreflect.FileDescriptor, error) {
+	if types == nil {
+		types = new(protoregistry.Types)
+	}
+	if files == nil {
+		files = new(protoregistry.Files)
+	}
 	var compressedFd []byte
 	switch meta := sd.Metadata.(type) {
 	case string:
@@ -39,7 +54,7 @@ func fileDescriptorFromServiceDesc(sd *grpc.ServiceDesc) (protoreflect.FileDescr
 		compressedFd = gogoproto.FileDescriptor(meta)
 		// check protobuf registry
 		if len(compressedFd) == 0 {
-			compressedFd = proto.FileDescriptor(meta) // nolint: staticcheck
+			compressedFd = legacyproto.FileDescriptor(meta) // nolint: staticcheck
 		}
 	case []byte:
 		compressedFd = meta
@@ -57,7 +72,7 @@ func fileDescriptorFromServiceDesc(sd *grpc.ServiceDesc) (protoreflect.FileDescr
 	}
 	// build fd with a new file and type registry as we don't need to put this into the global registry
 	// we just need information
-	fd, err := BuildFileDescriptor(rawFd, new(protoregistry.Types), new(protoregistry.Files))
+	fd, err := BuildFileDescriptor(rawFd, types, files)
 	if err != nil {
 		return nil, err
 	}
@@ -96,4 +111,15 @@ func DecompressFileDescriptor(compressed []byte) ([]byte, error) {
 		return nil, fmt.Errorf("bad gzipped descriptor: %v", err)
 	}
 	return out, nil
+}
+
+func GogoProtoXtToProtoXt(xt *gogoproto.ExtensionDesc) *legacyproto.ExtensionDesc {
+	return &legacyproto.ExtensionDesc{
+		ExtendedType:  xt.ExtendedType,
+		ExtensionType: xt.ExtensionType,
+		Field:         xt.Field,
+		Name:          xt.Name,
+		Tag:           xt.Tag,
+		Filename:      xt.Filename,
+	}
 }
