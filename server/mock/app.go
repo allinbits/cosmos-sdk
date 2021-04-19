@@ -2,8 +2,6 @@ package mock
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"path/filepath"
 
 	"github.com/tendermint/tendermint/types"
@@ -42,28 +40,6 @@ func NewApp(rootDir string, logger log.Logger) (abci.Application, error) {
 	}
 
 	return baseApp, nil
-}
-
-// KVStoreHandler is a simple handler that takes kvstoreTx and writes
-// them to the db
-func KVStoreHandler(storeKey sdk.StoreKey) sdk.Handler {
-	return func(ctx sdk.Context, msg sdk.Msg) (*sdk.Result, error) {
-		dTx, ok := msg.(kvstoreTx)
-		if !ok {
-			return nil, errors.New("KVStoreHandler should only receive kvstoreTx")
-		}
-
-		// tx is already unmarshalled
-		key := dTx.key
-		value := dTx.value
-
-		store := ctx.KVStore(storeKey)
-		store.Set(key, value)
-
-		return &sdk.Result{
-			Log: fmt.Sprintf("set %s=%s", key, value),
-		}, nil
-	}
 }
 
 // basic KV structure
