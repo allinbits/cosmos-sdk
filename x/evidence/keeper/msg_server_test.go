@@ -1,7 +1,6 @@
-package evidence_test
+package keeper_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/evidence"
 	"github.com/cosmos/cosmos-sdk/x/evidence/exported"
 	"github.com/cosmos/cosmos-sdk/x/evidence/keeper"
 	"github.com/cosmos/cosmos-sdk/x/evidence/types"
@@ -21,32 +19,14 @@ import (
 type HandlerTestSuite struct {
 	suite.Suite
 
-	handler sdk.Handler
-	app     *simapp.SimApp
+	msgServer types.MsgServer
+	app       *simapp.SimApp
 }
 
-func testMsgSubmitEvidence(r *require.Assertions, e exported.Evidence, s sdk.AccAddress) exported.MsgSubmitEvidenceI {
+func testMsgSubmitEvidence(r *require.Assertions, e exported.Evidence, s sdk.AccAddress) *types.MsgSubmitEvidence {
 	msg, err := types.NewMsgSubmitEvidence(s, e)
 	r.NoError(err)
 	return msg
-}
-
-func testEquivocationHandler(k interface{}) types.Handler {
-	return func(ctx sdk.Context, e exported.Evidence) error {
-		if err := e.ValidateBasic(); err != nil {
-			return err
-		}
-
-		ee, ok := e.(*types.Equivocation)
-		if !ok {
-			return fmt.Errorf("unexpected evidence type: %T", e)
-		}
-		if ee.Height%2 == 0 {
-			return fmt.Errorf("unexpected even evidence height: %d", ee.Height)
-		}
-
-		return nil
-	}
 }
 
 func (suite *HandlerTestSuite) SetupTest() {
@@ -63,7 +43,7 @@ func (suite *HandlerTestSuite) SetupTest() {
 
 	app.EvidenceKeeper = *evidenceKeeper
 
-	suite.handler = evidence.NewHandler(*evidenceKeeper)
+	suite.msgServer = keeper.NewMsgServerImpl(*evidenceKeeper)
 	suite.app = app
 }
 
@@ -72,7 +52,7 @@ func (suite *HandlerTestSuite) TestMsgSubmitEvidence() {
 	s := sdk.AccAddress("test________________")
 
 	testCases := []struct {
-		msg       sdk.Msg
+		msg       *types.MsgSubmitEvidence
 		expectErr bool
 	}{
 		{
@@ -106,18 +86,14 @@ func (suite *HandlerTestSuite) TestMsgSubmitEvidence() {
 	for i, tc := range testCases {
 		ctx := suite.app.BaseApp.NewContext(false, tmproto.Header{Height: suite.app.LastBlockHeight() + 1})
 
-		res, err := suite.handler(ctx, tc.msg)
+		res, err := suite.msgServer.SubmitEvidence(sdk.WrapSDKContext(ctx), tc.msg)
 		if tc.expectErr {
 			suite.Require().Error(err, "expected error; tc #%d", i)
 		} else {
 			suite.Require().NoError(err, "unexpected error; tc #%d", i)
 			suite.Require().NotNil(res, "expected non-nil result; tc #%d", i)
 
-			msg := tc.msg.(exported.MsgSubmitEvidenceI)
-
-			var resultData types.MsgSubmitEvidenceResponse
-			suite.app.AppCodec().UnmarshalBinaryBare(res.Data, &resultData)
-			suite.Require().Equal(msg.GetEvidence().Hash().Bytes(), resultData.Hash, "invalid hash; tc #%d", i)
+			suite.Require().Equal(tc.msg.GetEvidence().Hash().Bytes(), res.Hash, "invalid hash; tc #%d", i)
 		}
 	}
 }
