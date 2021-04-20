@@ -111,8 +111,6 @@
     - [MsgMultiSend](#cosmos.bank.v1beta1.MsgMultiSend)
     - [MsgMultiSendResponse](#cosmos.bank.v1beta1.MsgMultiSendResponse)
     - [MsgSend](#cosmos.bank.v1beta1.MsgSend)
-    - [MsgSendFromModuleToModule](#cosmos.bank.v1beta1.MsgSendFromModuleToModule)
-    - [MsgSendFromModuleToModuleResponse](#cosmos.bank.v1beta1.MsgSendFromModuleToModuleResponse)
     - [MsgSendResponse](#cosmos.bank.v1beta1.MsgSendResponse)
   
     - [Msg](#cosmos.bank.v1beta1.Msg)
@@ -2002,26 +2000,6 @@ MsgSend represents a message to send coins from one account to another.
 
 
 
-<a name="cosmos.bank.v1beta1.MsgSendFromModuleToModule"></a>
-
-### MsgSendFromModuleToModule
-
-
-
-
-
-
-
-<a name="cosmos.bank.v1beta1.MsgSendFromModuleToModuleResponse"></a>
-
-### MsgSendFromModuleToModuleResponse
-
-
-
-
-
-
-
 <a name="cosmos.bank.v1beta1.MsgSendResponse"></a>
 
 ### MsgSendResponse
@@ -2047,7 +2025,6 @@ Msg defines the bank Msg service.
 | ----------- | ------------ | ------------- | ------------| ------- | -------- |
 | `Send` | [MsgSend](#cosmos.bank.v1beta1.MsgSend) | [MsgSendResponse](#cosmos.bank.v1beta1.MsgSendResponse) | Send defines a method for sending coins from one account to another account. | |
 | `MultiSend` | [MsgMultiSend](#cosmos.bank.v1beta1.MsgMultiSend) | [MsgMultiSendResponse](#cosmos.bank.v1beta1.MsgMultiSendResponse) | MultiSend defines a method for sending coins from some accounts to other accounts. | |
-| `SendFromToModule` | [MsgSendFromModuleToModule](#cosmos.bank.v1beta1.MsgSendFromModuleToModule) | [MsgSendFromModuleToModuleResponse](#cosmos.bank.v1beta1.MsgSendFromModuleToModuleResponse) | SendFromModuleToModule sends coins from module to another module | |
 
  <!-- end services -->
 

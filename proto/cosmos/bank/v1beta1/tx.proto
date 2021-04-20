@@ -15,21 +15,7 @@ service Msg {
 
   // MultiSend defines a method for sending coins from some accounts to other accounts.
   rpc MultiSend(MsgMultiSend) returns (MsgMultiSendResponse);
-
-  // SendFromModuleToModule sends coins from module to another module
-  rpc SendFromToModule(MsgSendFromModuleToModule) returns (MsgSendFromModuleToModuleResponse) {
-    option (cosmos.module.internal) = true;
-  };
 }
-
-message MsgSendFromModuleToModule {
-
-}
-
-message MsgSendFromModuleToModuleResponse {
-
-}
-
 // MsgSend represents a message to send coins from one account to another.
 message MsgSend {
   option (gogoproto.equal)           = false;

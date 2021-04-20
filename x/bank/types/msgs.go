@@ -13,26 +13,6 @@ const (
 
 var _ sdk.Msg = &MsgSend{}
 
-func (m *MsgSendFromModuleToModule) Route() string {
-	panic("implement me")
-}
-
-func (m *MsgSendFromModuleToModule) Type() string {
-	panic("implement me")
-}
-
-func (m *MsgSendFromModuleToModule) ValidateBasic() error {
-	panic("implement me")
-}
-
-func (m *MsgSendFromModuleToModule) GetSignBytes() []byte {
-	panic("implement me")
-}
-
-func (m *MsgSendFromModuleToModule) GetSigners() []sdk.AccAddress {
-	panic("implement me")
-}
-
 // NewMsgSend - construct a msg to send coins from one account to another.
 //nolint:interfacer
 func NewMsgSend(fromAddr, toAddr sdk.AccAddress, amount sdk.Coins) *MsgSend {

@@ -60,7 +60,8 @@ func (msr *MsgServiceRouter) Handler(methodName string) MsgServiceHandler {
 	return handler
 }
 
-// ExternalHandler returns the handler for the given sdk.Msg
+// ExternalHandler returns the handler for the given sdk.Msg, it returns only
+// the handlers which can be called externally.
 func (msr *MsgServiceRouter) ExternalHandler(msg sdk.Msg) MsgServiceHandler {
 	protoName := gogoproto.MessageName(msg)
 	if protoName == "" {
@@ -73,6 +74,7 @@ func (msr *MsgServiceRouter) ExternalHandler(msg sdk.Msg) MsgServiceHandler {
 	return handler
 }
 
+// InternalHandler returns the handler for the given method, it also returns internal handlers
 func (msr *MsgServiceRouter) InternalHandler(method string) (handler interface{}, invoker sdk.GRPCUnaryInvokerFn) {
 	invoker, exists := msr.rpcInvokers[method]
 	if !exists {
@@ -106,18 +108,31 @@ func (msr *MsgServiceRouter) RegisterService(gRPCDesc *grpc.ServiceDesc, handler
 	}
 }
 
+// registerMethod registers the given gRPC RPC method, aside from that it will register in the interface registry the input as sdk.Msg
 func (msr *MsgServiceRouter) registerMethod(md protoreflect.MethodDescriptor, srv interface{}, handler sdk.GRPCUnaryInvokerFn) error {
 	// first we check if the concrete types were registered in the interface registry
 	fqMethod := protohelpers.InvocationPath(md)
 	typeURL := fmt.Sprintf(fmt.Sprintf("/%s", md.Input().FullName()))
-	_, err := msr.interfaceRegistry.Resolve(fqMethod)
-	if err != nil {
-		return fmt.Errorf("unable to resolve the fully qualified RPC method for the input: %w", err) // TODO: remove this when service msg disappears
+	// check if they were registered
+	_, err := msr.interfaceRegistry.Resolve(typeURL)
+	if err == nil {
+		return fmt.Errorf("input type %s was already registered", typeURL)
 	}
-	_, err = msr.interfaceRegistry.Resolve(typeURL)
-	if err != nil {
-		return fmt.Errorf("unable to resolve the type URL for the RPC input: %w", err)
+	_, err = msr.interfaceRegistry.Resolve(fqMethod)
+	if err == nil {
+		return fmt.Errorf("type %s was already registered as ServiceMsg", fqMethod)
 	}
+	// register types in the interface registry
+	rtype := gogoproto.MessageType((string)(md.Input().FullName()))
+	if rtype == nil {
+		return fmt.Errorf("unable to get concrete type for %s", md.Input().FullName())
+	}
+	concrete, ok := reflect.New(rtype).Elem().Interface().(sdk.Msg)
+	if !ok {
+		return fmt.Errorf("provided input %s does not implement sdk.Msg", md.Input().FullName())
+	}
+	msr.interfaceRegistry.RegisterImplementations((*sdk.Msg)(nil), concrete) // register as sdk.Msg
+	msr.interfaceRegistry.RegisterCustomTypeURL((*sdk.Msg)(nil), fqMethod, concrete)
 	// check if the method is internal or not
 	internalRPC := false
 	// mxtd is the method descriptor extension
@@ -162,9 +177,7 @@ func (msr *MsgServiceRouter) registerMethod(md protoreflect.MethodDescriptor, sr
 
 		return sdk.WrapServiceResult(ctx, resMsg, err)
 	}
-	concrete := gogoproto.MessageType((string)(md.Input().FullName()))                             // we pull the concrete type
-	msgName := gogoproto.MessageName(reflect.New(concrete).Elem().Interface().(gogoproto.Message)) // and we get the name
-
+	msgName := gogoproto.MessageName(concrete) // get name
 	msr.msgHandlers[msgName] = msgHandler
 	msr.serviceMsgToMsgName[fqMethod] = msgName
 	return nil
