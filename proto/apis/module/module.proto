@@ -1,0 +1,15 @@
+syntax="proto3";
+
+package cosmos.module;
+
+option go_package = "github.com/cosmos/cosmos-sdk/apis/module";
+
+import "google/protobuf/descriptor.proto";
+
+// here we're providing a way to extend method options
+// for sdk built services that handle message and query execution
+extend google.protobuf.MethodOptions {
+  // internal communicates to the runtime that the given RPC
+  // should not be callable externally but only by modules.
+  optional bool internal = 110001;
+}
