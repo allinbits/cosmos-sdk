@@ -31,12 +31,12 @@ type ModuleClient struct{}
 // Invoke implements grpc.ClientConn
 func (m *ModuleClient) Invoke(ctx context.Context, method string, args, reply interface{}, _ ...grpc.CallOption) error {
 	sdkCtx := UnwrapSDKContext(ctx)
-	handler, call := sdkCtx.router.HandlerForMethod(method)
-	if handler == nil || call == nil {
+	handler, invoke := sdkCtx.router.HandlerForMethod(method)
+	if handler == nil || invoke == nil {
 		panic(fmt.Sprintf("handler not found for type %T", args))
 	}
 	// invoke the method
-	result, err := call(
+	result, err := invoke(
 		handler,
 		ctx,
 		func(in interface{}) error {

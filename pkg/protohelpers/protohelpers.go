@@ -123,3 +123,9 @@ func GogoProtoXtToProtoXt(xt *gogoproto.ExtensionDesc) *legacyproto.ExtensionDes
 		Filename:      xt.Filename,
 	}
 }
+
+// InvocationPath returns the path used to invoke a gRPC method
+// from a grpc.ClientConn given its method descriptor
+func InvocationPath(md protoreflect.MethodDescriptor) string {
+	return fmt.Sprintf("/%s/%s", md.FullName().Parent(), md.Name())
+}

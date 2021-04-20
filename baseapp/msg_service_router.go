@@ -2,13 +2,15 @@ package baseapp
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
+	"reflect"
 
 	gogogrpc "github.com/gogo/protobuf/grpc"
 	gogoproto "github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/cosmos/cosmos-sdk/apis/module"
@@ -21,10 +23,11 @@ import (
 // MsgServiceRouter routes fully-qualified Msg service methods to their handler.
 type MsgServiceRouter struct {
 	interfaceRegistry codectypes.InterfaceRegistry
-	serviceMsgRoutes  map[string]MsgServiceHandler      // contains the broken google.Protobuf.Any spec routes
-	msgFullnameToRPC  map[string]string                 // maps tx.msgs.Any.TypeURL to the grpc.Service.Methods names saved in serviceMsgRoutes
-	rpcInvokers       map[string]sdk.GRPCUnaryInvokerFn // maps a method, example: /bank.MsgServer/Send to the function that invokes the method in the server implementation
-	rpcServer         map[string]interface{}            // maps a method, example: /bank.MsgServer/Send to the server implementation, in this example bank.MsgServer
+
+	msgHandlers         map[string]MsgServiceHandler      // maps msg name to MsgServiceHandler and maps what can be called externally
+	serviceMsgToMsgName map[string]string                 // maps service msg name to msgHandlers name
+	rpcInvokers         map[string]sdk.GRPCUnaryInvokerFn // maps gRPC Invoke path to the UnaryInvoker function, this maps what can be called internally
+	invokerPathToServer map[string]interface{}            // maps gRPC invoke path to the actual server implementation
 }
 
 var _ gogogrpc.Server = &MsgServiceRouter{}
@@ -32,10 +35,10 @@ var _ gogogrpc.Server = &MsgServiceRouter{}
 // NewMsgServiceRouter creates a new MsgServiceRouter.
 func NewMsgServiceRouter() *MsgServiceRouter {
 	return &MsgServiceRouter{
-		serviceMsgRoutes: make(map[string]MsgServiceHandler),
-		msgFullnameToRPC: make(map[string]string),
-		rpcServer:        make(map[string]interface{}),
-		rpcInvokers:      make(map[string]sdk.GRPCUnaryInvokerFn),
+		interfaceRegistry:   nil,
+		msgHandlers:         make(map[string]MsgServiceHandler),
+		serviceMsgToMsgName: make(map[string]string),
+		rpcInvokers:         make(map[string]sdk.GRPCUnaryInvokerFn),
 	}
 }
 
@@ -45,24 +48,24 @@ type MsgServiceHandler = func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result,
 // Handler returns the MsgServiceHandler for a given query route path or nil
 // if not found.
 func (msr *MsgServiceRouter) Handler(methodName string) MsgServiceHandler {
-	handler, ok := msr.serviceMsgRoutes[methodName]
+	name, ok := msr.serviceMsgToMsgName[methodName]
 	if !ok {
 		return nil
+	}
+	handler, ok := msr.msgHandlers[name]
+	if !ok {
+		panic(fmt.Errorf("service msg name is registered but not the handler: %s", methodName))
 	}
 	return handler
 }
 
-// HandlerFor returns the handler for the given sdk.Msg
-func (msr *MsgServiceRouter) HandlerFor(msg sdk.Msg) MsgServiceHandler {
+// ExternalHandler returns the handler for the given sdk.Msg
+func (msr *MsgServiceRouter) ExternalHandler(msg sdk.Msg) MsgServiceHandler {
 	protoName := gogoproto.MessageName(msg)
 	if protoName == "" {
 		panic("received a non registered proto message")
 	}
-	routeName, ok := msr.msgFullnameToRPC[protoName]
-	if !ok {
-		return nil
-	}
-	handler, ok := msr.serviceMsgRoutes[routeName]
+	handler, ok := msr.msgHandlers[protoName]
 	if !ok {
 		return nil
 	}
@@ -74,112 +77,95 @@ func (msr *MsgServiceRouter) HandlerForMethod(method string) (handler interface{
 	if !exists {
 		return nil, nil
 	}
-	handler, exists = msr.rpcServer[method]
+	handler, exists = msr.invokerPathToServer[method]
 	if !exists {
-		panic(fmt.Sprintf("invoker for method %s exists but no service implementation was found", method))
+		panic(fmt.Errorf("invoker for method %s exists but no service implementation was found", method))
 	}
 	return handler, invoker
 }
 
-// RegisterService implements the gRPC Server.RegisterService method. sd is a gRPC
-// service description, handler is an object which implements that gRPC service.
-//
-// This function PANICs:
-// - if it is called before the service `Msg`s have been registered using
-//   RegisterInterfaces,
-// - or if a service is being registered twice.
-func (msr *MsgServiceRouter) RegisterService(gsd *grpc.ServiceDesc, handler interface{}) {
-	// Adds a top-level query handler based on the gRPC service name.
-	for _, method := range gsd.Methods {
-		fqMethod := fmt.Sprintf("/%s/%s", gsd.ServiceName, method.MethodName)
-		methodHandler := method.Handler
-
-		// Check that the service Msg fully-qualified method name has already
-		// been registered (via RegisterInterfaces). If the user registers a
-		// service without registering according service Msg type, there might be
-		// some unexpected behavior down the road. Since we can't return an error
-		// (`Server.RegisterService` interface restriction) we panic (at startup).
-		serviceMsg, err := msr.interfaceRegistry.Resolve(fqMethod)
-		if err != nil || serviceMsg == nil {
-			panic(
-				fmt.Errorf(
-					"type_url %s has not been registered yet. "+
-						"Before calling RegisterService, you must register all interfaces by calling the `RegisterInterfaces` "+
-						"method on module.BasicManager. Each module should call `msgservice.RegisterMsgServiceDesc` inside its "+
-						"`RegisterInterfaces` method with the `_Msg_serviceDesc` generated by proto-gen",
-					fqMethod,
-				),
-			)
-		}
-
-		// Check that each service is only registered once. If a service is
-		// registered more than once, then we should error. Since we can't
-		// return an error (`Server.RegisterService` interface restriction) we
-		// panic (at startup).
-		_, found := msr.serviceMsgRoutes[fqMethod]
-		if found {
-			panic(
-				fmt.Errorf(
-					"msg service %s has already been registered. Please make sure to only register each service once. "+
-						"This usually means that there are conflicting modules registering the same msg service",
-					fqMethod,
-				),
-			)
-		}
-
-		msgHandler := func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
-			ctx = ctx.WithEventManager(sdk.NewEventManager())
-			interceptor := func(goCtx context.Context, _ interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-				goCtx = context.WithValue(goCtx, sdk.SdkContextKey, ctx)
-				return handler(goCtx, req)
-			}
-			// Call the method handler from the service description with the handler object.
-			// We don't do any decoding here because the decoding was already done.
-			res, err := methodHandler(handler, sdk.WrapSDKContext(ctx), noopDecoder, interceptor)
-			if err != nil {
-				return nil, err
-			}
-
-			resMsg, ok := res.(gogoproto.Message)
-			if !ok {
-				return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidType, "Expecting proto.Message, got %T", resMsg)
-			}
-
-			return sdk.WrapServiceResult(ctx, resMsg, err)
-		}
-
-		msr.serviceMsgRoutes[fqMethod] = msgHandler
-		msr.rpcInvokers[fqMethod] = func(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-			return methodHandler(srv, ctx, dec, interceptor)
-		}
-		msr.rpcServer[fqMethod] = handler
-		// check if method is internal
-	}
-	// TODO(fdymylja): since the old sdk.Handlers are now deprecated, we register the sdk.Msg type URLs as handlers
-	// and map those to their respective handlers. This should be the default way of handling an sdk.Msg
-	// once we remove sdk.ServiceMsg which breaks google.protobuf.Any spec.
-	sd, err := protohelpers.ServiceDescriptorFromGRPCServiceDesc(gsd, nil, nil)
+func (msr *MsgServiceRouter) RegisterService(gRPCDesc *grpc.ServiceDesc, handler interface{}) {
+	sd, err := protohelpers.ServiceDescriptorFromGRPCServiceDesc(gRPCDesc, nil, nil)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("unable to parse gRPC service descriptor: %w", err))
 	}
-	// here we're just mapping the request fullname, ex: cosmos.bank.MsgSend grpc MsgServer handler
-	// after sdk.ServiceMsg is removed, this will register the request types
-	// in the codec too, which will allow us to remove a lot of boilerplate from codec.go
-	for mid := 0; mid < sd.Methods().Len(); mid++ {
-		md := sd.Methods().Get(mid)
-		msgFullname := md.Input().FullName()
-		fqMethod := fmt.Sprintf("/%s/%s", sd.FullName(), md.Name())
-		msr.msgFullnameToRPC[(string)(msgFullname)] = fqMethod
-		opt := md.Options().(*descriptorpb.MethodOptions)
-		if opt == nil {
-			continue
-		}
-		xt, err := proto.GetExtension(opt, protohelpers.GogoProtoXtToProtoXt(module.E_Internal))
+
+	fqToHandler := make(map[string]sdk.GRPCUnaryInvokerFn, len(gRPCDesc.Methods))
+	for _, method := range gRPCDesc.Methods {
+		methodHandler := method.Handler
+		fqToHandler[fmt.Sprintf("/%s/%s", gRPCDesc.ServiceName, method.MethodName)] = sdk.GRPCUnaryInvokerFn(methodHandler)
+	}
+
+	for i := 0; i < sd.Methods().Len(); i++ {
+		md := sd.Methods().Get(i)
+		err = msr.registerMethod(md, handler, fqToHandler[protohelpers.InvocationPath(md)])
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("unable to register method %s: %w", sd.Methods().Get(i).FullName(), err))
 		}
-		log.Printf("%#v", xt)
 	}
+}
+
+func (msr *MsgServiceRouter) registerMethod(md protoreflect.MethodDescriptor, srv interface{}, handler sdk.GRPCUnaryInvokerFn) error {
+	// first we check if the concrete types were registered in the interface registry
+	fqMethod := protohelpers.InvocationPath(md)
+	typeURL := fmt.Sprintf(fmt.Sprintf("/%s", md.Input().FullName()))
+	_, err := msr.interfaceRegistry.Resolve(fqMethod)
+	if err != nil {
+		return fmt.Errorf("unable to resolve the fully qualified RPC method for the input: %w", err) // TODO: remove this when service msg disappears
+	}
+	_, err = msr.interfaceRegistry.Resolve(typeURL)
+	if err != nil {
+		return fmt.Errorf("unable to resolve the type URL for the RPC input: %w", err)
+	}
+	// check if the method is internal or not
+	internalRPC := false
+	// mxtd is the method descriptor extension
+	mxtd := md.Options().(*descriptorpb.MethodOptions)
+	if mxtd != nil {
+		v, err := proto.GetExtension(mxtd, protohelpers.GogoProtoXtToProtoXt(module.E_Internal))
+		if err != nil && !errors.Is(err, proto.ErrMissingExtension) {
+			return fmt.Errorf("unable to get extensions: %w", err)
+		}
+		internalRPC = *v.(*bool)
+	}
+	// check if it was already registered
+	if _, exists := msr.rpcInvokers[fqMethod]; exists {
+		return fmt.Errorf("the provided method %s was already registered", fqMethod)
+	}
+	// create the internal handler
+	msr.rpcInvokers[fqMethod] = handler
+	// if the method is internal then simply return
+	if internalRPC {
+		return nil
+	}
+	// if the method is not internal then map service msg type URL and
+	// msg type URL to the msg handler
+	msgHandler := func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		ctx = ctx.WithEventManager(sdk.NewEventManager())
+		interceptor := func(goCtx context.Context, _ interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+			goCtx = context.WithValue(goCtx, sdk.SdkContextKey, ctx)
+			return handler(goCtx, req)
+		}
+		// Call the method handler from the service description with the handler object.
+		// We don't do any decoding here because the decoding was already done.
+		res, err := handler(srv, sdk.WrapSDKContext(ctx), noopDecoder, interceptor)
+		if err != nil {
+			return nil, err
+		}
+
+		resMsg, ok := res.(gogoproto.Message)
+		if !ok {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidType, "Expecting proto.Message, got %T", resMsg)
+		}
+
+		return sdk.WrapServiceResult(ctx, resMsg, err)
+	}
+	concrete := gogoproto.MessageType((string)(md.Input().FullName()))                             // we pull the concrete type
+	msgName := gogoproto.MessageName(reflect.New(concrete).Elem().Interface().(gogoproto.Message)) // and we get the name
+
+	msr.msgHandlers[msgName] = msgHandler
+	msr.serviceMsgToMsgName[fqMethod] = msgName
+	return nil
 }
 
 // SetInterfaceRegistry sets the interface registry for the router.

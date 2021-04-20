@@ -81,6 +81,17 @@ var _ sdk.MsgRequest = &MsgCreateDog{}
 
 func (msg *MsgCreateDog) GetSigners() []sdk.AccAddress { return []sdk.AccAddress{} }
 func (msg *MsgCreateDog) ValidateBasic() error         { return nil }
+func (msg *MsgCreateDog) Route() string {
+	panic("not callable")
+}
+
+func (msg *MsgCreateDog) Type() string {
+	panic("not callable")
+}
+
+func (msg *MsgCreateDog) GetSignBytes() []byte {
+	panic("not callable")
+}
 
 func NewServiceMsgCreateDog(msg *MsgCreateDog) sdk.Msg {
 	return sdk.ServiceMsg{

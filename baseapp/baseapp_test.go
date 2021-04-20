@@ -94,8 +94,7 @@ func registerHandler(msg sdk.MsgRequest, handler MsgServiceHandler) func(baseApp
 		}
 		// this message might not be a service msg so we register an alias to the handler
 		// this is a hack since ATM we're still testing with improper semantics.
-		baseApp.msgServiceRouter.serviceMsgRoutes[name] = handler
-		baseApp.msgServiceRouter.msgFullnameToRPC[name] = name
+		baseApp.msgServiceRouter.msgHandlers[name] = handler
 	}
 }
 
@@ -139,12 +138,11 @@ func setupBaseAppWithSnapshots(t *testing.T, blocks uint, blockTxs int, options 
 	registerTestCodec(codec)
 
 	routerOpt := func(bapp *BaseApp) {
-		bapp.msgServiceRouter.serviceMsgRoutes[msgKeyValue{}.XXX_MessageName()] = func(ctx sdk.Context, msg sdk.MsgRequest) (*sdk.Result, error) {
+		bapp.msgServiceRouter.msgHandlers[msgKeyValue{}.XXX_MessageName()] = func(ctx sdk.Context, msg sdk.MsgRequest) (*sdk.Result, error) {
 			kv := msg.(*msgKeyValue)
 			bapp.cms.GetCommitKVStore(capKey2).Set(kv.Key, kv.Value)
 			return &sdk.Result{}, nil
 		}
-		bapp.msgServiceRouter.msgFullnameToRPC[msgKeyValue{}.XXX_MessageName()] = msgKeyValue{}.XXX_MessageName()
 	}
 
 	snapshotInterval := uint64(2)
@@ -1643,12 +1641,11 @@ func TestQuery(t *testing.T) {
 	}
 
 	routerOpt := func(bapp *BaseApp) {
-		bapp.msgServiceRouter.serviceMsgRoutes[msgCounter{}.XXX_MessageName()] = func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
+		bapp.msgServiceRouter.msgHandlers[msgCounter{}.XXX_MessageName()] = func(ctx sdk.Context, req sdk.MsgRequest) (*sdk.Result, error) {
 			store := ctx.KVStore(capKey1)
 			store.Set(key, value)
 			return &sdk.Result{}, nil
 		}
-		bapp.msgServiceRouter.msgFullnameToRPC[msgCounter{}.XXX_MessageName()] = msgCounter{}.XXX_MessageName()
 	}
 
 	app := setupBaseApp(t, anteOpt, routerOpt)

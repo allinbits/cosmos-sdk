@@ -16,6 +16,7 @@ func NewTestInterfaceRegistry() types.InterfaceRegistry {
 
 func RegisterInterfaces(registry types.InterfaceRegistry) {
 	registry.RegisterImplementations((*sdk.Msg)(nil), &TestMsg{})
+	registry.RegisterImplementations((*sdk.Msg)(nil), &MsgCreateDog{})
 
 	registry.RegisterInterface("Animal", (*Animal)(nil))
 	registry.RegisterImplementations(
