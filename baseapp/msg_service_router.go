@@ -8,7 +8,7 @@ import (
 
 	gogogrpc "github.com/gogo/protobuf/grpc"
 	gogoproto "github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/proto"
+	legacyproto "github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -127,19 +127,27 @@ func (msr *MsgServiceRouter) registerMethod(md protoreflect.MethodDescriptor, sr
 	if rtype == nil {
 		return fmt.Errorf("unable to get concrete type for %s", md.Input().FullName())
 	}
-	concrete, ok := reflect.New(rtype).Elem().Interface().(sdk.Msg)
+	concrete, ok := reflect.New(rtype).Elem().Interface().(gogoproto.Message)
 	if !ok {
-		return fmt.Errorf("provided input %s does not implement sdk.Msg", md.Input().FullName())
+		return fmt.Errorf("type %s does not implement proto.Message", md.Input().FullName())
 	}
-	msr.interfaceRegistry.RegisterImplementations((*sdk.Msg)(nil), concrete) // register as sdk.Msg
-	msr.interfaceRegistry.RegisterCustomTypeURL((*sdk.Msg)(nil), fqMethod, concrete)
+	switch concrete.(type) {
+	case sdk.Msg:
+		msr.interfaceRegistry.RegisterImplementations((*sdk.Msg)(nil), concrete) // register as sdk.Msg
+		msr.interfaceRegistry.RegisterCustomTypeURL((*sdk.Msg)(nil), fqMethod, concrete)
+	case sdk.MsgRequest:
+		msr.interfaceRegistry.RegisterImplementations((*sdk.MsgRequest)(nil), concrete) // register as sdk.Msg
+		msr.interfaceRegistry.RegisterCustomTypeURL((*sdk.MsgRequest)(nil), fqMethod, concrete)
+	default:
+		return fmt.Errorf("type %s does not implement sdk.Msg or sdk.MsgRequest", md.Input().FullName())
+	}
 	// check if the method is internal or not
 	internalRPC := false
 	// mxtd is the method descriptor extension
 	mxtd := md.Options().(*descriptorpb.MethodOptions)
 	if mxtd != nil {
-		v, err := proto.GetExtension(mxtd, protohelpers.GogoProtoXtToProtoXt(module.E_Internal))
-		if err != nil && !errors.Is(err, proto.ErrMissingExtension) {
+		v, err := legacyproto.GetExtension(mxtd, protohelpers.GogoProtoXtToProtoXt(module.E_Internal))
+		if err != nil && !errors.Is(err, legacyproto.ErrMissingExtension) {
 			return fmt.Errorf("unable to get extensions: %w", err)
 		}
 		internalRPC = *v.(*bool)
