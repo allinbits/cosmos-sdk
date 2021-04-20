@@ -131,6 +131,9 @@ func (msr *MsgServiceRouter) registerMethod(md protoreflect.MethodDescriptor, sr
 	if !ok {
 		return fmt.Errorf("type %s does not implement proto.Message", md.Input().FullName())
 	}
+	// we check either if the input is sdk.Msg or sdk.MsgRequest
+	// since sdk.Msg in the end is a super set of sdk.MsgRequest
+	// it is the first case we check against in the switch.
 	switch concrete.(type) {
 	case sdk.Msg:
 		msr.interfaceRegistry.RegisterImplementations((*sdk.Msg)(nil), concrete) // register as sdk.Msg
