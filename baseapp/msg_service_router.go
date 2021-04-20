@@ -39,6 +39,7 @@ func NewMsgServiceRouter() *MsgServiceRouter {
 		msgHandlers:         make(map[string]MsgServiceHandler),
 		serviceMsgToMsgName: make(map[string]string),
 		rpcInvokers:         make(map[string]sdk.GRPCUnaryInvokerFn),
+		invokerPathToServer: make(map[string]interface{}),
 	}
 }
 
@@ -72,7 +73,7 @@ func (msr *MsgServiceRouter) ExternalHandler(msg sdk.Msg) MsgServiceHandler {
 	return handler
 }
 
-func (msr *MsgServiceRouter) HandlerForMethod(method string) (handler interface{}, call sdk.GRPCUnaryInvokerFn) {
+func (msr *MsgServiceRouter) InternalHandler(method string) (handler interface{}, invoker sdk.GRPCUnaryInvokerFn) {
 	invoker, exists := msr.rpcInvokers[method]
 	if !exists {
 		return nil, nil
@@ -132,8 +133,9 @@ func (msr *MsgServiceRouter) registerMethod(md protoreflect.MethodDescriptor, sr
 	if _, exists := msr.rpcInvokers[fqMethod]; exists {
 		return fmt.Errorf("the provided method %s was already registered", fqMethod)
 	}
-	// create the internal handler
+	// map what can be called internally
 	msr.rpcInvokers[fqMethod] = handler
+	msr.invokerPathToServer[fqMethod] = srv
 	// if the method is internal then simply return
 	if internalRPC {
 		return nil

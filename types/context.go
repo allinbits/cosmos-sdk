@@ -19,7 +19,7 @@ import (
 type GRPCUnaryInvokerFn func(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error)
 
 type IntermoduleRouter interface {
-	HandlerForMethod(method string) (handler interface{}, call GRPCUnaryInvokerFn)
+	InternalHandler(method string) (handler interface{}, call GRPCUnaryInvokerFn)
 }
 
 func NewModuleClient() *ModuleClient {
@@ -31,7 +31,7 @@ type ModuleClient struct{}
 // Invoke implements grpc.ClientConn
 func (m *ModuleClient) Invoke(ctx context.Context, method string, args, reply interface{}, _ ...grpc.CallOption) error {
 	sdkCtx := UnwrapSDKContext(ctx)
-	handler, invoke := sdkCtx.router.HandlerForMethod(method)
+	handler, invoke := sdkCtx.router.InternalHandler(method)
 	if handler == nil || invoke == nil {
 		panic(fmt.Sprintf("handler not found for type %T", args))
 	}

@@ -67,6 +67,30 @@ func TestRegisterMsgServiceTwice(t *testing.T) {
 	})
 }
 
+func TestInternalMethods(t *testing.T) {
+	// Setup baseapp.
+	db := dbm.NewMemDB()
+	encCfg := simapp.MakeTestEncodingConfig()
+	app := baseapp.NewBaseApp("test", log.NewTMLogger(log.NewSyncWriter(os.Stdout)), db, encCfg.TxConfig.TxDecoder())
+	app.SetInterfaceRegistry(encCfg.InterfaceRegistry)
+	testdata.RegisterInterfaces(encCfg.InterfaceRegistry)
+
+	// First time registering service shouldn't panic.
+	require.NotPanics(t, func() {
+		testdata.RegisterMsgServer(
+			app.MsgServiceRouter(),
+			testdata.MsgServerImpl{},
+		)
+	})
+
+	r := app.MsgServiceRouter()
+	h := r.ExternalHandler(&testdata.MsgCreateInternal{})
+	require.Nil(t, h, "handler should have been nil")
+	srv, invoker := r.InternalHandler("/testdata.Msg/CreateInternal")
+	require.NotNil(t, srv)
+	require.NotNil(t, invoker)
+}
+
 func TestMsgService(t *testing.T) {
 	priv, _, _ := testdata.KeyTestPubAddr()
 	encCfg := simapp.MakeTestEncodingConfig()

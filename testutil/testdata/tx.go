@@ -93,6 +93,26 @@ func (msg *MsgCreateDog) GetSignBytes() []byte {
 	panic("not callable")
 }
 
+func (m *MsgCreateInternal) Route() string {
+	panic("not callable")
+}
+
+func (m *MsgCreateInternal) Type() string {
+	panic("not callable")
+}
+
+func (m *MsgCreateInternal) ValidateBasic() error {
+	panic("not callable")
+}
+
+func (m *MsgCreateInternal) GetSignBytes() []byte {
+	panic("not callable")
+}
+
+func (m *MsgCreateInternal) GetSigners() []sdk.AccAddress {
+	panic("not callable")
+}
+
 func NewServiceMsgCreateDog(msg *MsgCreateDog) sdk.Msg {
 	return sdk.ServiceMsg{
 		MethodName: "/testdata.Msg/CreateDog",

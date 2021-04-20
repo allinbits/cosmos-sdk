@@ -14,3 +14,7 @@ func (m MsgServerImpl) CreateDog(_ context.Context, msg *MsgCreateDog) (*MsgCrea
 		Name: msg.Dog.Name,
 	}, nil
 }
+
+func (m MsgServerImpl) CreateInternal(_ context.Context, msg *MsgCreateInternal) (*MsgCreateInternal, error) {
+	return &MsgCreateInternal{}, nil
+}

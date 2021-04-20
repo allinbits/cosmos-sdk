@@ -3,6 +3,8 @@ package testdata;
 
 import "gogoproto/gogo.proto";
 import "testdata.proto";
+import "apis/module/module.proto";
+
 
 option go_package = "github.com/cosmos/cosmos-sdk/testutil/testdata";
 
@@ -10,6 +12,13 @@ option go_package = "github.com/cosmos/cosmos-sdk/testutil/testdata";
 // https://github.com/cosmos/cosmos-sdk/issues/7500.
 service Msg {
   rpc CreateDog(MsgCreateDog) returns (MsgCreateDogResponse);
+  rpc CreateInternal(MsgCreateInternal) returns (MsgCreateInternal){
+    option (cosmos.module.internal) = true;
+  };
+}
+
+message MsgCreateInternal {
+
 }
 
 message MsgCreateDog {
