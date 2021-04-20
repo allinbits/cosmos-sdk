@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 
 	gogogrpc "github.com/gogo/protobuf/grpc"
@@ -88,6 +89,7 @@ func (msr *MsgServiceRouter) InternalHandler(method string) (handler interface{}
 }
 
 func (msr *MsgServiceRouter) RegisterService(gRPCDesc *grpc.ServiceDesc, handler interface{}) {
+	log.Printf("registering service: %s", gRPCDesc.ServiceName)
 	sd, err := protohelpers.ServiceDescriptorFromGRPCServiceDesc(gRPCDesc, nil, nil)
 	if err != nil {
 		panic(fmt.Errorf("unable to parse gRPC service descriptor: %w", err))
@@ -137,7 +139,7 @@ func (msr *MsgServiceRouter) registerMethod(md protoreflect.MethodDescriptor, sr
 	switch concrete.(type) {
 	case sdk.Msg:
 		msr.interfaceRegistry.RegisterImplementations((*sdk.Msg)(nil), concrete) // register as sdk.Msg
-		msr.interfaceRegistry.RegisterCustomTypeURL((*sdk.Msg)(nil), fqMethod, concrete)
+		msr.interfaceRegistry.RegisterCustomTypeURL((*sdk.MsgRequest)(nil), fqMethod, concrete)
 	case sdk.MsgRequest:
 		msr.interfaceRegistry.RegisterImplementations((*sdk.MsgRequest)(nil), concrete) // register as sdk.Msg
 		msr.interfaceRegistry.RegisterCustomTypeURL((*sdk.MsgRequest)(nil), fqMethod, concrete)
