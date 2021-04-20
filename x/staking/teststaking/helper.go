@@ -16,9 +16,9 @@ import (
 // Helper is a structure which wraps the staking handler
 // and provides methods useful in tests
 type Helper struct {
-	t *testing.T
-	h sdk.Handler
-	k keeper.Keeper
+	t         *testing.T
+	msgServer stakingtypes.MsgServer
+	k         keeper.Keeper
 
 	Ctx        sdk.Context
 	Commission stakingtypes.CommissionRates
@@ -28,7 +28,7 @@ type Helper struct {
 
 // NewHelper creates staking Handler wrapper for tests
 func NewHelper(t *testing.T, ctx sdk.Context, k keeper.Keeper) *Helper {
-	return &Helper{t, staking.NewHandler(k), k, ctx, ZeroCommission(), sdk.DefaultBondDenom}
+	return &Helper{t, keeper.NewMsgServerImpl(k), k, ctx, ZeroCommission(), sdk.DefaultBondDenom}
 }
 
 // CreateValidator calls handler to create a new staking validator
@@ -83,7 +83,26 @@ func (sh *Helper) Undelegate(delegator sdk.AccAddress, val sdk.ValAddress, amoun
 
 // Handle calls staking handler on a given message
 func (sh *Helper) Handle(msg sdk.Msg, ok bool) *sdk.Result {
-	res, err := sh.h(sh.Ctx, msg)
+	var err error
+	var res *sdk.Result
+	switch m := msg.(type) {
+	case *stakingtypes.MsgCreateValidator:
+		r, err2 := sh.msgServer.CreateValidator(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
+	case *stakingtypes.MsgEditValidator:
+		r, err2 := sh.msgServer.EditValidator(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
+	case *stakingtypes.MsgDelegate:
+		r, err2 := sh.msgServer.Delegate(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
+	case *stakingtypes.MsgBeginRedelegate:
+		r, err2 := sh.msgServer.BeginRedelegate(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
+	case *stakingtypes.MsgUndelegate:
+		r, err2 := sh.msgServer.Undelegate(sdk.WrapSDKContext(sh.Ctx), m)
+		res, err = sdk.WrapServiceResult(sh.Ctx, r, err2)
+	}
+
 	if ok {
 		require.NoError(sh.t, err)
 		require.NotNil(sh.t, res)
@@ -91,6 +110,7 @@ func (sh *Helper) Handle(msg sdk.Msg, ok bool) *sdk.Result {
 		require.Error(sh.t, err)
 		require.Nil(sh.t, res)
 	}
+
 	return res
 }
 

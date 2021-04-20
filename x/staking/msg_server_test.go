@@ -1,7 +1,6 @@
 package staking_test
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/simapp"
-	"github.com/cosmos/cosmos-sdk/testutil/testdata"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	"github.com/cosmos/cosmos-sdk/x/staking/keeper"
@@ -1206,16 +1204,6 @@ func TestBondUnbondRedelegateSlashTwice(t *testing.T) {
 	// validator should be in unbonding state
 	validator, _ = app.StakingKeeper.GetValidator(ctx, valA)
 	require.Equal(t, validator.GetStatus(), types.Unbonding)
-}
-
-func TestInvalidMsg(t *testing.T) {
-	k := keeper.Keeper{}
-	h := staking.NewHandler(k)
-
-	res, err := h(sdk.NewContext(nil, tmproto.Header{}, false, nil), testdata.NewTestMsg())
-	require.Error(t, err)
-	require.Nil(t, res)
-	require.True(t, strings.Contains(err.Error(), "unrecognized staking message type"))
 }
 
 func TestInvalidCoinDenom(t *testing.T) {
