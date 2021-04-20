@@ -3,7 +3,6 @@ package types
 import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/auth/vesting/exported"
 )
@@ -44,12 +43,6 @@ func RegisterInterfaces(registry types.InterfaceRegistry) {
 		&ContinuousVestingAccount{},
 		&PeriodicVestingAccount{},
 	)
-
-	registry.RegisterImplementations(
-		(*sdk.Msg)(nil),
-		&MsgCreateVestingAccount{},
-	)
-
 }
 
 var amino = codec.NewLegacyAmino()
