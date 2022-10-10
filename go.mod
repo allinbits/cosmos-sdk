@@ -6,7 +6,6 @@ require (
 	github.com/99designs/keyring v1.1.6
 	github.com/armon/go-metrics v0.3.6
 	github.com/bgentry/speakeasy v0.1.0
-	github.com/btcsuite/btcd v0.21.0-beta
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/coinbase/rosetta-sdk-go v0.5.9
 	github.com/confio/ics23/go v0.6.3
@@ -19,7 +18,6 @@ require (
 	github.com/gogo/protobuf v1.3.3
 	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.5.2
-	github.com/golang/snappy v0.0.2 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
@@ -45,6 +43,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
+	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tendermint/btcd v0.1.1
 	github.com/tendermint/cosmos-rosetta-gateway v0.3.0-rc2.0.20210304154332-87d6ca4410df
 	github.com/tendermint/crypto v0.0.0-20191022145703-50d29ede1e15
