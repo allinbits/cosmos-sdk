@@ -18,18 +18,21 @@ const (
 
 // Default governance params
 var (
-	DefaultMinDepositTokens          = sdkmath.NewInt(10000000)
-	DefaultMinExpeditedDepositTokens = DefaultMinDepositTokens.Mul(sdkmath.NewInt(DefaultMinExpeditedDepositTokensRatio))
-	DefaultQuorum                    = sdkmath.LegacyNewDecWithPrec(334, 3)
-	DefaultThreshold                 = sdkmath.LegacyNewDecWithPrec(5, 1)
-	DefaultExpeditedThreshold        = sdkmath.LegacyNewDecWithPrec(667, 3)
-	DefaultVetoThreshold             = sdkmath.LegacyNewDecWithPrec(334, 3)
-	DefaultMinInitialDepositRatio    = sdkmath.LegacyZeroDec()
-	DefaultProposalCancelRatio       = sdkmath.LegacyMustNewDecFromStr("0.5")
-	DefaultProposalCancelDestAddress = ""
-	DefaultBurnProposalPrevote       = false // set to false to replicate behavior of when this change was made (0.47)
-	DefaultBurnVoteQuorom            = false // set to false to  replicate behavior of when this change was made (0.47)
-	DefaultBurnVoteVeto              = true  // set to true to replicate behavior of when this change was made (0.47)
+	DefaultMinDepositTokens                        = sdkmath.NewInt(10000000)
+	DefaultMinExpeditedDepositTokens               = DefaultMinDepositTokens.Mul(sdkmath.NewInt(DefaultMinExpeditedDepositTokensRatio))
+	DefaultQuorum                                  = sdkmath.LegacyNewDecWithPrec(334, 3)
+	DefaultThreshold                               = sdkmath.LegacyNewDecWithPrec(5, 1)
+	DefaultExpeditedThreshold                      = sdkmath.LegacyNewDecWithPrec(667, 3)
+	DefaultVetoThreshold                           = sdkmath.LegacyNewDecWithPrec(334, 3)
+	DefaultMinInitialDepositRatio                  = sdkmath.LegacyZeroDec()
+	DefaultProposalCancelRatio                     = sdkmath.LegacyMustNewDecFromStr("0.5")
+	DefaultProposalCancelDestAddress               = ""
+	DefaultBurnProposalPrevote                     = false // set to false to replicate behavior of when this change was made (0.47)
+	DefaultBurnVoteQuorom                          = false // set to false to replicate behavior of when this change was made (0.47)
+	DefaultBurnVoteVeto                            = true  // set to true to replicate behavior of when this change was made (0.47)
+	DefaultQuorumTimeout             time.Duration = 0     // disabled by default
+	DefaultMaxVotingPeriodExtension  time.Duration = 0     // disabled by default
+	DefaultQuorumCheckCount          uint64        = 0     // disabled by default
 )
 
 // Deprecated: NewDepositParams creates a new DepositParams object
@@ -59,7 +62,8 @@ func NewVotingParams(votingPeriod *time.Duration) VotingParams {
 // NewParams creates a new Params instance with given values.
 func NewParams(
 	minDeposit, expeditedminDeposit sdk.Coins, maxDepositPeriod, votingPeriod, expeditedVotingPeriod time.Duration,
-	quorum, threshold, expeditedThreshold, vetoThreshold, minInitialDepositRatio, proposalCancelRatio, proposalCancelDest string, burnProposalDeposit, burnVoteQuorum, burnVoteVeto bool,
+	quorum, threshold, expeditedThreshold, vetoThreshold, minInitialDepositRatio, proposalCancelRatio, proposalCancelDest string,
+	burnProposalDeposit, burnVoteQuorum, burnVoteVeto bool, quorumTimeout, maxVotingPeriodExtension time.Duration, quorumCheckCount uint64,
 ) Params {
 	return Params{
 		MinDeposit:                 minDeposit,
@@ -77,6 +81,9 @@ func NewParams(
 		BurnProposalDepositPrevote: burnProposalDeposit,
 		BurnVoteQuorum:             burnVoteQuorum,
 		BurnVoteVeto:               burnVoteVeto,
+		QuorumTimeout:              &quorumTimeout,
+		MaxVotingPeriodExtension:   &maxVotingPeriodExtension,
+		QuorumCheckCount:           quorumCheckCount,
 	}
 }
 
@@ -98,6 +105,9 @@ func DefaultParams() Params {
 		DefaultBurnProposalPrevote,
 		DefaultBurnVoteQuorom,
 		DefaultBurnVoteVeto,
+		DefaultQuorumTimeout,
+		DefaultMaxVotingPeriodExtension,
+		DefaultQuorumCheckCount,
 	)
 }
 
@@ -213,6 +223,26 @@ func (p Params) ValidateBasic() error {
 		if err != nil {
 			return fmt.Errorf("deposits destination address is invalid: %s", p.ProposalCancelDest)
 		}
+	}
+
+	if p.QuorumTimeout == nil {
+		return fmt.Errorf("quorum timeout must not be nil: %d", p.QuorumTimeout)
+	}
+	if p.QuorumTimeout.Seconds() < 0 {
+		return fmt.Errorf("quorum timeout must be 0 or greater: %s", p.QuorumTimeout)
+	}
+	if p.QuorumTimeout.Seconds() > p.VotingPeriod.Seconds() {
+		return fmt.Errorf("quorum timeout %s must be less than or equal to the voting period %s", p.QuorumTimeout, p.VotingPeriod)
+	}
+
+	if p.MaxVotingPeriodExtension == nil {
+		return fmt.Errorf("max voting period extension must not be nil: %d", p.MaxVotingPeriodExtension)
+	}
+	if p.MaxVotingPeriodExtension.Seconds() < 0 {
+		return fmt.Errorf("max voting period extension must be 0 or greater: %s", p.MaxVotingPeriodExtension)
+	}
+	if p.MaxVotingPeriodExtension.Seconds() < p.VotingPeriod.Seconds()-p.QuorumTimeout.Seconds() {
+		return fmt.Errorf("max voting period extension %s must be greater than or equal to the difference between the voting period %s and the quorum timeout %s", p.MaxVotingPeriodExtension, p.VotingPeriod, p.QuorumTimeout)
 	}
 
 	return nil

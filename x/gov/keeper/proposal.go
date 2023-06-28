@@ -263,5 +263,13 @@ func (keeper Keeper) ActivateVotingPeriod(ctx context.Context, proposal v1.Propo
 		return err
 	}
 
+	if params.QuorumCheckCount > 0 && !proposal.Expedited {
+		// add proposal to quorum check queue
+		err = keeper.QuorumCheckQueue.Set(ctx, collections.Join(proposal.VotingStartTime.Add(*params.QuorumTimeout), proposal.Id), 0)
+		if err != nil {
+			return err
+		}
+	}
+
 	return keeper.ActiveProposalsQueue.Set(ctx, collections.Join(*proposal.VotingEndTime, proposal.Id), proposal.Id)
 }

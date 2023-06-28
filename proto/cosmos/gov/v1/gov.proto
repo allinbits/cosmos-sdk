@@ -259,4 +259,22 @@ message Params {
  
   // burn deposits if quorum with vote type no_veto is met
   bool burn_vote_veto = 15;
+
+  // Duration of time after a proposal enters the voting period, during which quorum 
+  // must be achieved to not incur in a voting period extension.
+  //
+  // Since: cosmos-sdk 0.50
+  google.protobuf.Duration quorum_timeout = 16 [(gogoproto.stdduration) = true];
+
+  // Duration that expresses the maximum amount of time by which a proposal voting period
+  // can be extended.
+  //
+  // Since: cosmos-sdk 0.50
+  google.protobuf.Duration max_voting_period_extension = 17 [(gogoproto.stdduration) = true];
+
+  // Number of times a proposal should be checked for quorum after the quorum timeout
+  // has elapsed. Used to compute the amount of time in between quorum checks.
+  //
+  // Since: cosmos-sdk 0.50
+  uint64 quorum_check_count = 18;
 }

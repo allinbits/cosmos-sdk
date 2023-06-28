@@ -167,3 +167,100 @@ func (keeper Keeper) Tally(ctx context.Context, proposal v1.Proposal) (passes, b
 	// If more than 1/2 of non-abstaining voters vote No, proposal fails
 	return false, false, tallyResults, nil
 }
+
+// HasReachedQuorum returns whether or not a proposal has reached quorum
+// this is just a stripped down version of the Tally function above
+func (keeper Keeper) HasReachedQuorum(ctx context.Context, proposal v1.Proposal) (quorumPassed bool, err error) {
+	totalVotingPower := math.LegacyZeroDec()
+	currValidators := make(map[string]v1.ValidatorGovInfo)
+
+	// fetch all the bonded validators, insert them into currValidators
+	err = keeper.sk.IterateBondedValidatorsByPower(ctx, func(index int64, validator stakingtypes.ValidatorI) (stop bool) {
+		currValidators[validator.GetOperator().String()] = v1.NewValidatorGovInfo(
+			validator.GetOperator(),
+			validator.GetBondedTokens(),
+			validator.GetDelegatorShares(),
+			math.LegacyZeroDec(),
+			v1.WeightedVoteOptions{},
+		)
+
+		return false
+	})
+	if err != nil {
+		return false, err
+	}
+
+	rng := collections.NewPrefixedPairRange[uint64, sdk.AccAddress](proposal.Id)
+	err = keeper.Votes.Walk(ctx, rng, func(key collections.Pair[uint64, sdk.AccAddress], vote v1.Vote) (bool, error) {
+		voter, err := keeper.authKeeper.AddressCodec().StringToBytes(vote.Voter)
+		if err != nil {
+			return false, err
+		}
+
+		// if validator, just record it in the map
+		valAddrStr := sdk.ValAddress(voter).String()
+		if val, ok := currValidators[valAddrStr]; ok {
+			val.Vote = vote.Options
+			currValidators[valAddrStr] = val
+		}
+
+		// iterate over all delegations from voter, deduct from any delegated-to validators
+		err = keeper.sk.IterateDelegations(ctx, voter, func(index int64, delegation stakingtypes.DelegationI) (stop bool) {
+			valAddrStr := delegation.GetValidatorAddr().String()
+
+			if val, ok := currValidators[valAddrStr]; ok {
+				// There is no need to handle the special case that validator address equal to voter address.
+				// Because voter's voting power will tally again even if there will be deduction of voter's voting power from validator.
+				val.DelegatorDeductions = val.DelegatorDeductions.Add(delegation.GetShares())
+				currValidators[valAddrStr] = val
+
+				// delegation shares * bonded / total shares
+				votingPower := delegation.GetShares().MulInt(val.BondedTokens).Quo(val.DelegatorShares)
+				totalVotingPower = totalVotingPower.Add(votingPower)
+			}
+
+			return false
+		})
+		if err != nil {
+			return false, err
+		}
+
+		// unlike for Tally, we don't remove the vote from the store
+		return false, nil
+	})
+
+	if err != nil && !errors.Is(err, collections.ErrInvalidIterator) {
+		return false, err
+	}
+
+	// iterate over the validators again to tally their voting power
+	for _, val := range currValidators {
+		if len(val.Vote) == 0 {
+			continue
+		}
+
+		sharesAfterDeductions := val.DelegatorShares.Sub(val.DelegatorDeductions)
+		votingPower := sharesAfterDeductions.MulInt(val.BondedTokens).Quo(val.DelegatorShares)
+		totalVotingPower = totalVotingPower.Add(votingPower)
+	}
+
+	params, err := keeper.Params.Get(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// If there is no staked coins, the proposal has not reached quorum
+	totalBonded, err := keeper.sk.TotalBondedTokens(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if totalBonded.IsZero() {
+		return false, nil
+	}
+
+	// check and return whether or not the proposal has reached quorum
+	percentVoting := totalVotingPower.Quo(math.LegacyNewDecFromInt(totalBonded))
+	quorum, _ := math.LegacyNewDecFromStr(params.Quorum)
+	return percentVoting.GTE(quorum), nil
+}
