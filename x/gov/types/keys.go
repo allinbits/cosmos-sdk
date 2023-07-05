@@ -19,9 +19,9 @@ var (
 	ProposalsKeyPrefix            = collections.NewPrefix(0)  // ProposalsKeyPrefix stores the proposals raw bytes.
 	ActiveProposalQueuePrefix     = collections.NewPrefix(1)  // ActiveProposalQueuePrefix stores the active proposals.
 	InactiveProposalQueuePrefix   = collections.NewPrefix(2)  // InactiveProposalQueuePrefix stores the inactive proposals.
-	QuorumCheckQueuePrefix        = collections.NewPrefix(3)  // QuorumCheckQueuePrefix stores the proposals that need to be checked for quorum.
 	ProposalIDKey                 = collections.NewPrefix(3)  // ProposalIDKey stores the sequence representing the next proposal ID.
 	VotingPeriodProposalKeyPrefix = collections.NewPrefix(4)  // VotingPeriodProposalKeyPrefix stores which proposals are on voting period.
+	QuorumCheckQueuePrefix        = collections.NewPrefix(5)  // QuorumCheckQueuePrefix stores the proposals that need to be checked for quorum.
 	DepositsKeyPrefix             = collections.NewPrefix(16) // DepositsKeyPrefix stores deposits.
 	VotesKeyPrefix                = collections.NewPrefix(32) // VotesKeyPrefix stores the votes of proposals.
 	ParamsKey                     = collections.NewPrefix(48) // ParamsKey stores the module's params.
