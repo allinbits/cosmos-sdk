@@ -116,10 +116,12 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 				// to be "right after" the quorum timeout has elapsed, so if quorum is reached
 				// when quorumChecksDone is 0, we don't extend the voting period.
 				endTime := ctx.BlockTime().Add(*params.MaxVotingPeriodExtension)
-				proposal.VotingEndTime = &endTime
-				err = keeper.SetProposal(ctx, proposal)
-				if err != nil {
-					return false, err
+				if endTime.After(*proposal.VotingEndTime) {
+					proposal.VotingEndTime = &endTime
+					err = keeper.SetProposal(ctx, proposal)
+					if err != nil {
+						return false, err
+					}
 				}
 			}
 		} else if quorumChecksDone < params.QuorumCheckCount && proposal.VotingEndTime.After(ctx.BlockTime()) {
