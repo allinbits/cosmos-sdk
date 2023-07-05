@@ -17,17 +17,20 @@ import (
 
 // Simulation parameter constants
 const (
-	MinDeposit            = "min_deposit"
-	ExpeditedMinDeposit   = "expedited_min_deposit"
-	DepositPeriod         = "deposit_period"
-	MinInitialRatio       = "min_initial_ratio"
-	VotingPeriod          = "voting_period"
-	ExpeditedVotingPeriod = "expedited_voting_period"
-	Quorum                = "quorum"
-	Threshold             = "threshold"
-	ExpeditedThreshold    = "expedited_threshold"
-	Veto                  = "veto"
-	ProposalCancelRate    = "proposal_cancel_rate"
+	MinDeposit               = "min_deposit"
+	ExpeditedMinDeposit      = "expedited_min_deposit"
+	DepositPeriod            = "deposit_period"
+	MinInitialRatio          = "min_initial_ratio"
+	VotingPeriod             = "voting_period"
+	ExpeditedVotingPeriod    = "expedited_voting_period"
+	Quorum                   = "quorum"
+	Threshold                = "threshold"
+	ExpeditedThreshold       = "expedited_threshold"
+	Veto                     = "veto"
+	ProposalCancelRate       = "proposal_cancel_rate"
+	QuorumTimeout            = "quorum_timeout"
+	MaxVotingPeriodExtension = "max_voting_period_extension"
+	QuorumCheckCount         = "quorum_check_count"
 
 	// ExpeditedThreshold must be at least as large as the regular Threshold
 	// Therefore, we use this break out point in randomization.
@@ -94,6 +97,22 @@ func GenVeto(r *rand.Rand) sdkmath.LegacyDec {
 	return sdkmath.LegacyNewDecWithPrec(int64(simulation.RandIntBetween(r, 250, 334)), 3)
 }
 
+// GenQuorumTimeout returns a randomized QuorumTimeout between 0 and votingPeriod
+func GenQuorumTimeout(r *rand.Rand, votingPeriod time.Duration) time.Duration {
+	return time.Duration(r.Int63n(int64(votingPeriod)))
+}
+
+// GenMaxVotingPeriodExtension returns a randomized MaxVotingPeriodExtension
+// greater than votingPeriod-quorumTimout.
+func GenMaxVotingPeriodExtension(r *rand.Rand, votingPeriod, quorumTimout time.Duration) time.Duration {
+	return time.Duration(r.Int63n(2*60*60*24*2))*time.Second + (votingPeriod - quorumTimout)
+}
+
+// GenQuorumCheckCount returns a randomized QuorumCheckCount
+func GenQuorumCheckCount(r *rand.Rand) uint64 {
+	return uint64(r.Int63n(100))
+}
+
 // RandomizedGenState generates a random GenesisState for gov
 func RandomizedGenState(simState *module.SimulationState) {
 	startingProposalID := uint64(simState.Rand.Intn(100))
@@ -131,9 +150,20 @@ func RandomizedGenState(simState *module.SimulationState) {
 	var veto sdkmath.LegacyDec
 	simState.AppParams.GetOrGenerate(Veto, &veto, simState.Rand, func(r *rand.Rand) { veto = GenVeto(r) })
 
+	var quorumTimout time.Duration
+	simState.AppParams.GetOrGenerate(QuorumTimeout, &quorumTimout, simState.Rand, func(r *rand.Rand) { quorumTimout = GenQuorumTimeout(r, votingPeriod) })
+
+	var maxVotingPeriodExtension time.Duration
+	simState.AppParams.GetOrGenerate(MaxVotingPeriodExtension, &maxVotingPeriodExtension, simState.Rand, func(r *rand.Rand) {
+		maxVotingPeriodExtension = GenMaxVotingPeriodExtension(r, votingPeriod, quorumTimout)
+	})
+
+	var quorumCheckCount uint64
+	simState.AppParams.GetOrGenerate(QuorumCheckCount, &quorumCheckCount, simState.Rand, func(r *rand.Rand) { quorumCheckCount = GenQuorumCheckCount(r) })
+
 	govGenesis := v1.NewGenesisState(
 		startingProposalID,
-		v1.NewParams(minDeposit, expeditedMinDeposit, depositPeriod, votingPeriod, expeditedVotingPeriod, quorum.String(), threshold.String(), expitedVotingThreshold.String(), veto.String(), minInitialDepositRatio.String(), proposalCancelRate.String(), "", simState.Rand.Intn(2) == 0, simState.Rand.Intn(2) == 0, simState.Rand.Intn(2) == 0),
+		v1.NewParams(minDeposit, expeditedMinDeposit, depositPeriod, votingPeriod, expeditedVotingPeriod, quorum.String(), threshold.String(), expitedVotingThreshold.String(), veto.String(), minInitialDepositRatio.String(), proposalCancelRate.String(), "", simState.Rand.Intn(2) == 0, simState.Rand.Intn(2) == 0, simState.Rand.Intn(2) == 0, quorumTimout, maxVotingPeriodExtension, quorumCheckCount),
 	)
 
 	bz, err := json.MarshalIndent(&govGenesis, "", " ")
