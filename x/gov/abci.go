@@ -97,8 +97,8 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 
 		proposalVotingPeriod := proposal.VotingEndTime.Sub(*proposal.VotingStartTime)
 		s := proposalVotingPeriod - *params.QuorumTimeout
-		// this subtraction should be 0 or positive, otherwise the quorum timout would be after the voting period ends
-		if s < 0 {
+		// this subtraction should be positive, otherwise the quorum timout would be at or after the voting period ends
+		if s <= 0 {
 			// if so we should not check for quorum
 			return false, nil
 		}
