@@ -225,24 +225,27 @@ func (p Params) ValidateBasic() error {
 		}
 	}
 
-	if p.QuorumTimeout == nil {
-		return fmt.Errorf("quorum timeout must not be nil: %d", p.QuorumTimeout)
-	}
-	if p.QuorumTimeout.Seconds() < 0 {
-		return fmt.Errorf("quorum timeout must be 0 or greater: %s", p.QuorumTimeout)
-	}
-	if p.QuorumTimeout.Seconds() > p.VotingPeriod.Seconds() {
-		return fmt.Errorf("quorum timeout %s must be less than or equal to the voting period %s", p.QuorumTimeout, p.VotingPeriod)
-	}
+	if p.QuorumCheckCount > 0 {
+		// If quorum check is enabled, validate quorum check params
+		if p.QuorumTimeout == nil {
+			return fmt.Errorf("quorum timeout must not be nil: %d", p.QuorumTimeout)
+		}
+		if p.QuorumTimeout.Seconds() < 0 {
+			return fmt.Errorf("quorum timeout must be 0 or greater: %s", p.QuorumTimeout)
+		}
+		if p.QuorumTimeout.Seconds() > p.VotingPeriod.Seconds() {
+			return fmt.Errorf("quorum timeout %s must be less than or equal to the voting period %s", p.QuorumTimeout, p.VotingPeriod)
+		}
 
-	if p.MaxVotingPeriodExtension == nil {
-		return fmt.Errorf("max voting period extension must not be nil: %d", p.MaxVotingPeriodExtension)
-	}
-	if p.MaxVotingPeriodExtension.Seconds() < 0 {
-		return fmt.Errorf("max voting period extension must be 0 or greater: %s", p.MaxVotingPeriodExtension)
-	}
-	if p.MaxVotingPeriodExtension.Seconds() < p.VotingPeriod.Seconds()-p.QuorumTimeout.Seconds() {
-		return fmt.Errorf("max voting period extension %s must be greater than or equal to the difference between the voting period %s and the quorum timeout %s", p.MaxVotingPeriodExtension, p.VotingPeriod, p.QuorumTimeout)
+		if p.MaxVotingPeriodExtension == nil {
+			return fmt.Errorf("max voting period extension must not be nil: %d", p.MaxVotingPeriodExtension)
+		}
+		if p.MaxVotingPeriodExtension.Seconds() < 0 {
+			return fmt.Errorf("max voting period extension must be 0 or greater: %s", p.MaxVotingPeriodExtension)
+		}
+		if p.MaxVotingPeriodExtension.Seconds() < p.VotingPeriod.Seconds()-p.QuorumTimeout.Seconds() {
+			return fmt.Errorf("max voting period extension %s must be greater than or equal to the difference between the voting period %s and the quorum timeout %s", p.MaxVotingPeriodExtension, p.VotingPeriod, p.QuorumTimeout)
+		}
 	}
 
 	return nil
