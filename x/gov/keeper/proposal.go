@@ -229,6 +229,18 @@ func (keeper Keeper) DeleteProposal(ctx context.Context, proposalID uint64) erro
 		if err != nil {
 			return err
 		}
+
+		err = keeper.QuorumCheckQueue.Walk(ctx, nil, func(key collections.Pair[time.Time, uint64], _ uint64) (bool, error) {
+			// we need to traverse the entire queue as we do not know with certainty the value of
+			// the first part of the key (the time part)
+			if key.K2() == proposalID {
+				return false, keeper.QuorumCheckQueue.Remove(ctx, key)
+			}
+			return false, nil
+		})
+		if err != nil && !errors.Is(err, collections.ErrInvalidIterator) {
+			return err
+		}
 	}
 
 	return keeper.Proposals.Remove(ctx, proposalID)
