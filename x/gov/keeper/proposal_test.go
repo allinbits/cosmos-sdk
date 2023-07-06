@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -72,14 +73,22 @@ func (suite *KeeperTestSuite) TestDeleteProposal() {
 
 func (suite *KeeperTestSuite) TestActivateVotingPeriod() {
 	testCases := []struct {
-		name      string
-		expedited bool
+		name              string
+		expedited         bool
+		expectQuorumCheck bool
 	}{
-		{name: "regular proposal"},
-		{name: "expedited proposal", expedited: true},
+		{name: "regular proposal", expectQuorumCheck: true},
+		{name: "expedited proposal", expedited: true, expectQuorumCheck: false},
 	}
 
 	for _, tc := range testCases {
+		params := v1.DefaultParams()
+		params.QuorumCheckCount = 10 // enable quorum check
+		quorumTimeout := *params.VotingPeriod - time.Hour*8*2
+		params.QuorumTimeout = &quorumTimeout
+		err := suite.govKeeper.Params.Set(suite.ctx, params)
+		suite.Require().NoError(err)
+
 		tp := TestProposal
 		proposal, err := suite.govKeeper.SubmitProposal(suite.ctx, tp, "", "test", "summary", suite.addrs[0], tc.expedited)
 		suite.Require().NoError(err)
@@ -96,6 +105,19 @@ func (suite *KeeperTestSuite) TestActivateVotingPeriod() {
 		has, err := suite.govKeeper.ActiveProposalsQueue.Has(suite.ctx, collections.Join(*proposal.VotingEndTime, proposal.Id))
 		suite.Require().NoError(err)
 		suite.Require().True(has)
+
+		quorumCheckTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
+		hasQuorumCheck, err := suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+		suite.Require().NoError(err)
+		if tc.expectQuorumCheck {
+			suite.Require().True(hasQuorumCheck)
+			quorumCheckDone, err := suite.govKeeper.QuorumCheckQueue.Get(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+			suite.Require().NoError(err)
+			suite.Require().EqualValues(0, quorumCheckDone)
+		} else {
+			suite.Require().False(hasQuorumCheck)
+		}
+
 		suite.Require().NoError(suite.govKeeper.DeleteProposal(suite.ctx, proposal.Id))
 	}
 }
