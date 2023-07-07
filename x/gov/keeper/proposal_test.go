@@ -73,19 +73,20 @@ func (suite *KeeperTestSuite) TestDeleteProposal() {
 
 func (suite *KeeperTestSuite) TestActivateVotingPeriod() {
 	testCases := []struct {
-		name              string
-		expedited         bool
-		expectQuorumCheck bool
+		name      string
+		expedited bool
 	}{
-		{name: "regular proposal", expectQuorumCheck: true},
-		{name: "expedited proposal", expedited: true, expectQuorumCheck: false},
+		{name: "regular proposal"},
+		{name: "expedited proposal", expedited: true},
 	}
 
 	for _, tc := range testCases {
 		params := v1.DefaultParams()
 		params.QuorumCheckCount = 10 // enable quorum check
-		quorumTimeout := *params.VotingPeriod - time.Hour*8*2
+		quorumTimeout := *params.VotingPeriod - time.Hour*16
 		params.QuorumTimeout = &quorumTimeout
+		maxVotingPeriodExtension := time.Hour * 16
+		params.MaxVotingPeriodExtension = &maxVotingPeriodExtension
 		err := suite.govKeeper.Params.Set(suite.ctx, params)
 		suite.Require().NoError(err)
 
@@ -109,7 +110,7 @@ func (suite *KeeperTestSuite) TestActivateVotingPeriod() {
 		quorumCheckTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
 		hasQuorumCheck, err := suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
 		suite.Require().NoError(err)
-		if tc.expectQuorumCheck {
+		if !tc.expedited {
 			suite.Require().True(hasQuorumCheck)
 			quorumCheckDone, err := suite.govKeeper.QuorumCheckQueue.Get(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
 			suite.Require().NoError(err)
@@ -133,6 +134,15 @@ func (suite *KeeperTestSuite) TestDeleteProposalInVotingPeriod() {
 
 	for _, tc := range testCases {
 		suite.reset()
+		params := v1.DefaultParams()
+		params.QuorumCheckCount = 10 // enable quorum check
+		quorumTimeout := *params.VotingPeriod - time.Hour*16
+		params.QuorumTimeout = &quorumTimeout
+		maxVotingPeriodExtension := time.Hour * 16
+		params.MaxVotingPeriodExtension = &maxVotingPeriodExtension
+		err := suite.govKeeper.Params.Set(suite.ctx, params)
+		suite.Require().NoError(err)
+
 		tp := TestProposal
 		proposal, err := suite.govKeeper.SubmitProposal(suite.ctx, tp, "", "test", "summary", suite.addrs[0], tc.expedited)
 		suite.Require().NoError(err)
@@ -148,6 +158,18 @@ func (suite *KeeperTestSuite) TestDeleteProposalInVotingPeriod() {
 		suite.Require().NoError(err)
 		suite.Require().True(has)
 
+		quorumCheckTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
+		hasQuorumCheck, err := suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+		suite.Require().NoError(err)
+		if !tc.expedited {
+			suite.Require().True(hasQuorumCheck)
+			quorumCheckDone, err := suite.govKeeper.QuorumCheckQueue.Get(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+			suite.Require().NoError(err)
+			suite.Require().EqualValues(0, quorumCheckDone)
+		} else {
+			suite.Require().False(hasQuorumCheck)
+		}
+
 		// add vote
 		voteOptions := []*v1.WeightedVoteOption{{Option: v1.OptionYes, Weight: "1.0"}}
 		err = suite.govKeeper.AddVote(suite.ctx, proposal.Id, suite.addrs[0], voteOptions, "")
@@ -158,6 +180,16 @@ func (suite *KeeperTestSuite) TestDeleteProposalInVotingPeriod() {
 		// add vote but proposal is deleted along with its VotingPeriodProposalKey
 		err = suite.govKeeper.AddVote(suite.ctx, proposal.Id, suite.addrs[0], voteOptions, "")
 		suite.Require().ErrorContains(err, ": inactive proposal")
+
+		// proposal should not be in ActiveProposalsQueue
+		has, err = suite.govKeeper.ActiveProposalsQueue.Has(suite.ctx, collections.Join(*proposal.VotingEndTime, proposal.Id))
+		suite.Require().NoError(err)
+		suite.Require().False(has)
+
+		// proposal should not be in QuorumCheckQueue
+		hasQuorumCheck, err = suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+		suite.Require().NoError(err)
+		suite.Require().False(hasQuorumCheck)
 	}
 }
 
