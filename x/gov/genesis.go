@@ -67,6 +67,23 @@ func InitGenesis(ctx sdk.Context, ak types.AccountKeeper, bk types.BankKeeper, k
 			if err != nil {
 				panic(err)
 			}
+
+			params, err := k.Params.Get(ctx)
+			if err != nil {
+				panic(err)
+			}
+			var quorumChecksDone uint64 = 0
+			quorumTimeoutTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
+			if ctx.BlockTime().After(quorumTimeoutTime) {
+				// since we don't export the state of the quorum check queue, we can't know how many checks were actually
+				// done, so we need to find a workaround. Setting quorum checks done to 1 is sufficient to potentially
+				// trigger a voting period extension
+				quorumChecksDone = 1
+			}
+			err = k.QuorumCheckQueue.Set(ctx, collections.Join(quorumTimeoutTime, proposal.Id), quorumChecksDone)
+			if err != nil {
+				panic(err)
+			}
 		}
 		err := k.SetProposal(ctx, *proposal)
 		if err != nil {
