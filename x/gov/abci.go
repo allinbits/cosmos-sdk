@@ -96,9 +96,9 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 		}
 
 		proposalVotingPeriod := proposal.VotingEndTime.Sub(*proposal.VotingStartTime)
-		s := proposalVotingPeriod - *params.QuorumTimeout
+		quorumCheckPeriod := proposalVotingPeriod - *params.QuorumTimeout
 		// this subtraction should be positive, otherwise the quorum timout would be at or after the voting period ends
-		if s <= 0 {
+		if quorumCheckPeriod <= 0 {
 			// if so we should not check for quorum
 			return false, nil
 		}
@@ -127,7 +127,7 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 		} else if quorumChecksDone < params.QuorumCheckCount && proposal.VotingEndTime.After(ctx.BlockTime()) {
 			// proposal did not pass quorum and is still active, add back to queue with updated time key and counter.
 			// compute time interval between quorum checks
-			t := s / time.Duration(params.QuorumCheckCount)
+			t := quorumCheckPeriod / time.Duration(params.QuorumCheckCount)
 			// find time for next quorum check
 			nextQuorumCheckTime := key.K1().Add(t)
 			for !nextQuorumCheckTime.After(ctx.BlockTime()) {
