@@ -80,6 +80,8 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 			return false, err
 		}
 
+		var tagValue, logMsg string
+
 		params, err := keeper.Params.Get(ctx)
 		if err != nil {
 			return false, err
@@ -109,7 +111,10 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 			return false, err
 		}
 
+		logMsg = "proposal did not pass quorum after timeout, but was removed from quorum check queue"
+
 		if quorum {
+			tagValue = types.AttributeValueProposalQuorumMet
 			if quorumChecksDone > 0 && !proposal.VotingStartTime.Add(*params.QuorumTimeout).After(ctx.BlockTime()) {
 				// proposal passed quorum after timeout, extend voting period.
 				// canonically, we consider the first quorum check (i.e. when quorumChecksDone is 0)
@@ -117,12 +122,15 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 				// when quorumChecksDone is 0, we don't extend the voting period.
 				endTime := ctx.BlockTime().Add(*params.MaxVotingPeriodExtension)
 				if endTime.After(*proposal.VotingEndTime) {
+					logMsg = fmt.Sprintf("proposal passed quorum after timeout, vote end was extended from %s to %s", proposal.VotingEndTime, endTime)
 					proposal.VotingEndTime = &endTime
 					err = keeper.SetProposal(ctx, proposal)
 					if err != nil {
 						return false, err
 					}
 				}
+			} else {
+				logMsg = "proposal passed quorum before timeout, vote period was not extended"
 			}
 		} else if quorumChecksDone < params.QuorumCheckCount && proposal.VotingEndTime.After(ctx.BlockTime()) {
 			// proposal did not pass quorum and is still active, add back to queue with updated time key and counter.
@@ -143,7 +151,26 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 			if err != nil {
 				return false, err
 			}
+
+			logMsg = fmt.Sprintf("proposal did not pass quorum after timeout, next check happening at %s", nextQuorumCheckTime)
 		}
+
+		logger.Info(
+			"proposal quorum checked",
+			"proposal", proposal.Id,
+			"expedited", proposal.Expedited,
+			"title", proposal.Title,
+			"results", logMsg,
+		)
+
+		ctx.EventManager().EmitEvent(
+			sdk.NewEvent(
+				types.EventTypeQuorumCheck,
+				sdk.NewAttribute(types.AttributeKeyProposalID, fmt.Sprintf("%d", proposal.Id)),
+				sdk.NewAttribute(types.AttributeKeyProposalQuorumResult, tagValue),
+				sdk.NewAttribute(types.AttributeKeyProposalLog, logMsg),
+			),
+		)
 
 		return false, nil
 	})
