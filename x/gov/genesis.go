@@ -68,21 +68,27 @@ func InitGenesis(ctx sdk.Context, ak types.AccountKeeper, bk types.BankKeeper, k
 				panic(err)
 			}
 
-			params, err := k.Params.Get(ctx)
+			if proposal.Expedited {
+				break
+			}
+
+			quorum, err := k.HasReachedQuorum(ctx, *proposal)
 			if err != nil {
 				panic(err)
 			}
-			var quorumChecksDone uint64 = 0
-			quorumTimeoutTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
-			if ctx.BlockTime().After(quorumTimeoutTime) {
-				// since we don't export the state of the quorum check queue, we can't know how many checks were actually
-				// done, so we need to find a workaround. Setting quorum checks done to 1 is sufficient to potentially
-				// trigger a voting period extension
-				quorumChecksDone = 1
-			}
-			err = k.QuorumCheckQueue.Set(ctx, collections.Join(quorumTimeoutTime, proposal.Id), quorumChecksDone)
-			if err != nil {
-				panic(err)
+			if !quorum {
+				quorumTimeoutTime := proposal.VotingStartTime.Add(*data.Params.QuorumTimeout)
+				quorumCheckEntry := v1.NewQuorumCheckQueueEntry(quorumTimeoutTime, data.Params.QuorumCheckCount)
+				if ctx.BlockTime().After(quorumTimeoutTime) {
+					// since we don't export the state of the quorum check queue, we can't know how many checks were actually
+					// done. However, in order to trigger a vote time extension, it is enough to have at least one item
+					// in quorumCheckEntry.QuorumCheckTimestamps, which we canonically set to be the quorumTimeoutTime
+					quorumCheckEntry.QuorumCheckTimestamps = append(quorumCheckEntry.QuorumCheckTimestamps, &quorumTimeoutTime)
+				}
+				err = k.QuorumCheckQueue.Set(ctx, collections.Join(quorumTimeoutTime, proposal.Id), quorumCheckEntry)
+				if err != nil {
+					panic(err)
+				}
 			}
 		}
 		err := k.SetProposal(ctx, *proposal)

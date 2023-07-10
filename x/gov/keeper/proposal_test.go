@@ -107,14 +107,16 @@ func (suite *KeeperTestSuite) TestActivateVotingPeriod() {
 		suite.Require().NoError(err)
 		suite.Require().True(has)
 
-		quorumCheckTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
-		hasQuorumCheck, err := suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+		quorumTimeoutTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
+		hasQuorumCheck, err := suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumTimeoutTime, proposal.Id))
 		suite.Require().NoError(err)
 		if !tc.expedited {
 			suite.Require().True(hasQuorumCheck)
-			quorumCheckDone, err := suite.govKeeper.QuorumCheckQueue.Get(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+			quorumCheckEntry, err := suite.govKeeper.QuorumCheckQueue.Get(suite.ctx, collections.Join(quorumTimeoutTime, proposal.Id))
 			suite.Require().NoError(err)
-			suite.Require().EqualValues(0, quorumCheckDone)
+			suite.Require().EqualValues(quorumTimeoutTime, *quorumCheckEntry.QuorumTimeoutTime)
+			suite.Require().EqualValues(params.QuorumCheckCount, quorumCheckEntry.QuorumCheckCount)
+			suite.Require().Empty(quorumCheckEntry.QuorumCheckTimestamps)
 		} else {
 			suite.Require().False(hasQuorumCheck)
 		}
@@ -158,14 +160,11 @@ func (suite *KeeperTestSuite) TestDeleteProposalInVotingPeriod() {
 		suite.Require().NoError(err)
 		suite.Require().True(has)
 
-		quorumCheckTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
-		hasQuorumCheck, err := suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+		quorumTimeoutTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
+		hasQuorumCheck, err := suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumTimeoutTime, proposal.Id))
 		suite.Require().NoError(err)
 		if !tc.expedited {
 			suite.Require().True(hasQuorumCheck)
-			quorumCheckDone, err := suite.govKeeper.QuorumCheckQueue.Get(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
-			suite.Require().NoError(err)
-			suite.Require().EqualValues(0, quorumCheckDone)
 		} else {
 			suite.Require().False(hasQuorumCheck)
 		}
@@ -187,7 +186,7 @@ func (suite *KeeperTestSuite) TestDeleteProposalInVotingPeriod() {
 		suite.Require().False(has)
 
 		// proposal should not be in QuorumCheckQueue
-		hasQuorumCheck, err = suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumCheckTime, proposal.Id))
+		hasQuorumCheck, err = suite.govKeeper.QuorumCheckQueue.Has(suite.ctx, collections.Join(quorumTimeoutTime, proposal.Id))
 		suite.Require().NoError(err)
 		suite.Require().False(hasQuorumCheck)
 	}

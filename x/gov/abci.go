@@ -74,14 +74,13 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 
 	// fetch proposals that are due to be checked for quorum
 	rng = collections.NewPrefixUntilPairRange[time.Time, uint64](ctx.BlockTime())
-	err = keeper.QuorumCheckQueue.Walk(ctx, rng, func(key collections.Pair[time.Time, uint64], quorumChecksDone uint64) (bool, error) {
+	err = keeper.QuorumCheckQueue.Walk(ctx, rng, func(key collections.Pair[time.Time, uint64], quorumCheckEntry v1.QuorumCheckQueueEntry) (bool, error) {
 		proposal, err := keeper.Proposals.Get(ctx, key.K2())
 		if err != nil {
 			return false, err
 		}
 
 		var tagValue, logMsg string
-		skipQuorumCheck, quorum := false, false
 
 		params, err := keeper.Params.Get(ctx)
 		if err != nil {
@@ -94,42 +93,24 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 			return false, err
 		}
 
-		logMsg = "quorum check skipped, proposal was removed from quorum check queue"
-		tagValue = types.AttributeValueProposalQuorumCheckSkipped
-
-		if params.QuorumCheckCount == 0 {
-			skipQuorumCheck = true
+		// check if proposal passed quorum
+		quorum, err := keeper.HasReachedQuorum(ctx, proposal)
+		if err != nil {
+			return false, err
 		}
 
-		proposalVotingPeriod := proposal.VotingEndTime.Sub(*proposal.VotingStartTime)
-		quorumCheckPeriod := proposalVotingPeriod - *params.QuorumTimeout
-		// this subtraction should be positive, otherwise the quorum timout would be at or after the voting period ends
-		if quorumCheckPeriod <= 0 {
-			// if so we should not check for quorum
-			skipQuorumCheck = true
-		}
-
-		if !skipQuorumCheck {
-			// check if proposal passed quorum
-			quorum, err = keeper.HasReachedQuorum(ctx, proposal)
-			if err != nil {
-				return false, err
-			}
-
-			logMsg = "proposal did not pass quorum after timeout, but was removed from quorum check queue"
-			tagValue = types.AttributeValueProposalQuorumNotMet
-		}
+		logMsg = "proposal did not pass quorum after timeout, but was removed from quorum check queue"
+		tagValue = types.AttributeValueProposalQuorumNotMet
 
 		if quorum {
 			logMsg = "proposal passed quorum before timeout, vote period was not extended"
 			tagValue = types.AttributeValueProposalQuorumMet
-			if quorumChecksDone > 0 && !proposal.VotingStartTime.Add(*params.QuorumTimeout).After(ctx.BlockTime()) {
+			if len(quorumCheckEntry.QuorumCheckTimestamps) == 0 {
 				// proposal passed quorum after timeout, extend voting period.
-				// canonically, we consider the first quorum check (i.e. when quorumChecksDone is 0)
-				// to be "right after" the quorum timeout has elapsed, so if quorum is reached
-				// when quorumChecksDone is 0, we don't extend the voting period.
+				// canonically, we consider the first quorum check to be "right after" the  quorum timeout has elapsed,
+				// so if quorum is reached at the first check, we don't extend the voting period.
 				endTime := ctx.BlockTime().Add(*params.MaxVotingPeriodExtension)
-				logMsg = fmt.Sprintf("proposal passed quorum after timeout, but vote end %s is already after max extension %s", proposal.VotingEndTime, endTime)
+				logMsg = fmt.Sprintf("proposal passed quorum after timeout, but vote end %s is already after %s", proposal.VotingEndTime, endTime)
 				if endTime.After(*proposal.VotingEndTime) {
 					logMsg = fmt.Sprintf("proposal passed quorum after timeout, vote end was extended from %s to %s", proposal.VotingEndTime, endTime)
 					proposal.VotingEndTime = &endTime
@@ -139,22 +120,26 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 					}
 				}
 			}
-		} else if quorumChecksDone < params.QuorumCheckCount && proposal.VotingEndTime.After(ctx.BlockTime()) {
+		} else if uint64(len(quorumCheckEntry.QuorumCheckTimestamps)) < quorumCheckEntry.QuorumCheckCount && proposal.VotingEndTime.After(ctx.BlockTime()) {
 			// proposal did not pass quorum and is still active, add back to queue with updated time key and counter.
 			// compute time interval between quorum checks
+			quorumCheckPeriod := proposal.VotingEndTime.Sub(*quorumCheckEntry.QuorumTimeoutTime)
 			t := quorumCheckPeriod / time.Duration(params.QuorumCheckCount)
 			// find time for next quorum check
 			nextQuorumCheckTime := key.K1().Add(t)
 			for !nextQuorumCheckTime.After(ctx.BlockTime()) {
-				// next quorum check time is in the past, so add enough time intervals to get to the next quorum check time in the future
+				// next quorum check time is in the past, so add enough time intervals to get to the next quorum check time in the future.
+				// this is an edge case that should not happen in practice, except maybe for expedited proposals that are converted to
+				// regular proposals where the expedited voting period is shorter than the quorum timeout period.
 				nextQuorumCheckTime = nextQuorumCheckTime.Add(t)
 			}
 			if nextQuorumCheckTime.After(*proposal.VotingEndTime) {
 				// next quorum check time is after the voting period ends, so adjust it to be equal to the voting period end time
 				nextQuorumCheckTime = *proposal.VotingEndTime
 			}
-			quorumChecksDone++
-			err = keeper.QuorumCheckQueue.Set(ctx, collections.Join(nextQuorumCheckTime, proposal.Id), quorumChecksDone)
+			lastQuorumCheckTime := key.K1()
+			quorumCheckEntry.QuorumCheckTimestamps = append(quorumCheckEntry.QuorumCheckTimestamps, &lastQuorumCheckTime)
+			err = keeper.QuorumCheckQueue.Set(ctx, collections.Join(nextQuorumCheckTime, proposal.Id), quorumCheckEntry)
 			if err != nil {
 				return false, err
 			}
@@ -289,7 +274,8 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 
 			if params.QuorumCheckCount > 0 {
 				// add proposal to quorum check queue
-				err = keeper.QuorumCheckQueue.Set(ctx, collections.Join(proposal.VotingStartTime.Add(*params.QuorumTimeout), proposal.Id), 0)
+				quorumTimeoutTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
+				err = keeper.QuorumCheckQueue.Set(ctx, collections.Join(quorumTimeoutTime, proposal.Id), v1.NewQuorumCheckQueueEntry(quorumTimeoutTime, params.QuorumCheckCount))
 				if err != nil {
 					return false, err
 				}

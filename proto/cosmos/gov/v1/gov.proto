@@ -161,6 +161,25 @@ message Vote {
   string metadata = 5;
 }
 
+// QuorumCheckQueueEntry defines a quorum check queue entry.
+//
+// Since: cosmos-sdk 0.50
+message QuorumCheckQueueEntry {
+  // quorum_timeout_time is the time after which quorum checks start happening
+  // and voting period is extended if proposal reaches quorum.
+  google.protobuf.Timestamp quorum_timeout_time = 1 [(gogoproto.stdtime) = true];
+
+  // quorum_check_count is the number of times quorum will be checked.
+  // This is a snapshot of the parameter value with the same name when the
+  // proposal is initially added to the queue.
+  uint64 quorum_check_count = 2;
+
+  // quorum_check_timestamps is a list of times when quorum checks have been done.
+  // any entry in this list corresponds to a time when quorum was checked and
+  // not reached, since proposal would be removed from queue otherwise.
+  repeated google.protobuf.Timestamp quorum_check_timestamps = 3 [(gogoproto.stdtime) = true];
+}
+
 // DepositParams defines the params for deposits on governance proposals.
 message DepositParams {
   option deprecated = true;

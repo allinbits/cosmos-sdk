@@ -230,7 +230,7 @@ func (keeper Keeper) DeleteProposal(ctx context.Context, proposalID uint64) erro
 			return err
 		}
 
-		err = keeper.QuorumCheckQueue.Walk(ctx, nil, func(key collections.Pair[time.Time, uint64], _ uint64) (bool, error) {
+		err = keeper.QuorumCheckQueue.Walk(ctx, nil, func(key collections.Pair[time.Time, uint64], _ v1.QuorumCheckQueueEntry) (bool, error) {
 			// we need to traverse the entire queue as we do not know with certainty the value of
 			// the first part of the key (the time part)
 			if key.K2() == proposalID {
@@ -277,7 +277,8 @@ func (keeper Keeper) ActivateVotingPeriod(ctx context.Context, proposal v1.Propo
 
 	if params.QuorumCheckCount > 0 && !proposal.Expedited {
 		// add proposal to quorum check queue
-		err = keeper.QuorumCheckQueue.Set(ctx, collections.Join(proposal.VotingStartTime.Add(*params.QuorumTimeout), proposal.Id), 0)
+		quorumTimeoutTime := proposal.VotingStartTime.Add(*params.QuorumTimeout)
+		err = keeper.QuorumCheckQueue.Set(ctx, collections.Join(quorumTimeoutTime, proposal.Id), v1.NewQuorumCheckQueueEntry(quorumTimeoutTime, params.QuorumCheckCount))
 		if err != nil {
 			return err
 		}
