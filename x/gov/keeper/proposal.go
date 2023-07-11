@@ -234,7 +234,7 @@ func (keeper Keeper) DeleteProposal(ctx context.Context, proposalID uint64) erro
 			// we need to traverse the entire queue as we do not know with certainty the value of
 			// the first part of the key (the time part)
 			if key.K2() == proposalID {
-				return false, keeper.QuorumCheckQueue.Remove(ctx, key)
+				return true, keeper.QuorumCheckQueue.Remove(ctx, key)
 			}
 			return false, nil
 		})
