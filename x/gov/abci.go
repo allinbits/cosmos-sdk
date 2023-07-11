@@ -105,7 +105,7 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 		if quorum {
 			logMsg = "proposal passed quorum before timeout, vote period was not extended"
 			tagValue = types.AttributeValueProposalQuorumMet
-			if len(quorumCheckEntry.QuorumCheckTimestamps) == 0 {
+			if len(quorumCheckEntry.QuorumCheckTimestamps) > 0 {
 				// proposal passed quorum after timeout, extend voting period.
 				// canonically, we consider the first quorum check to be "right after" the  quorum timeout has elapsed,
 				// so if quorum is reached at the first check, we don't extend the voting period.
