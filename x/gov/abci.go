@@ -124,7 +124,7 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 			// proposal did not pass quorum and is still active, add back to queue with updated time key and counter.
 			// compute time interval between quorum checks
 			quorumCheckPeriod := proposal.VotingEndTime.Sub(*quorumCheckEntry.QuorumTimeoutTime)
-			t := quorumCheckPeriod / time.Duration(params.QuorumCheckCount)
+			t := quorumCheckPeriod / time.Duration(quorumCheckEntry.QuorumCheckCount)
 			// find time for next quorum check
 			nextQuorumCheckTime := key.K1().Add(t)
 			for !nextQuorumCheckTime.After(ctx.BlockTime()) {
