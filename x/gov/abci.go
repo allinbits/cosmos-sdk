@@ -127,11 +127,11 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 			t := quorumCheckPeriod / time.Duration(quorumCheckEntry.QuorumCheckCount)
 			// find time for next quorum check
 			nextQuorumCheckTime := key.K1().Add(t)
-			for !nextQuorumCheckTime.After(ctx.BlockTime()) {
+			if !nextQuorumCheckTime.After(ctx.BlockTime()) {
 				// next quorum check time is in the past, so add enough time intervals to get to the next quorum check time in the future.
-				// this is an edge case that should not happen in practice, except maybe for expedited proposals that are converted to
-				// regular proposals where the expedited voting period is shorter than the quorum timeout period.
-				nextQuorumCheckTime = nextQuorumCheckTime.Add(t)
+				d := ctx.BlockTime().Sub(nextQuorumCheckTime)
+				n := d / t
+				nextQuorumCheckTime = nextQuorumCheckTime.Add(t * (n + 1))
 			}
 			if nextQuorumCheckTime.After(*proposal.VotingEndTime) {
 				// next quorum check time is after the voting period ends, so adjust it to be equal to the voting period end time
