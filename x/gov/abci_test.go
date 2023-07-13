@@ -721,6 +721,7 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 					}
 					return false, nil
 				})
+			require.ErrorIs(t, err, collections.ErrInvalidIterator)
 		})
 	}
 }
