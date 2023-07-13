@@ -113,7 +113,16 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) error {
 				logMsg = fmt.Sprintf("proposal passed quorum after timeout, but vote end %s is already after %s", proposal.VotingEndTime, endTime)
 				if endTime.After(*proposal.VotingEndTime) {
 					logMsg = fmt.Sprintf("proposal passed quorum after timeout, vote end was extended from %s to %s", proposal.VotingEndTime, endTime)
+					// Update ActiveProposalsQueue with new VotingEndTime
+					err = keeper.ActiveProposalsQueue.Remove(ctx, collections.Join(*proposal.VotingEndTime, proposal.Id))
+					if err != nil {
+						return false, err
+					}
 					proposal.VotingEndTime = &endTime
+					err = keeper.ActiveProposalsQueue.Set(ctx, collections.Join(*proposal.VotingEndTime, proposal.Id), proposal.Id)
+					if err != nil {
+						return false, err
+					}
 					err = keeper.SetProposal(ctx, proposal)
 					if err != nil {
 						return false, err

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	abci "github.com/cometbft/cometbft/abci/types"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"cosmossdk.io/collections"
@@ -600,6 +601,126 @@ func TestExpeditedProposal_PassAndConversionToRegular(t *testing.T) {
 			require.Equal(t, depositorInitialBalance, depositorEventualBalance)
 
 			require.Equal(t, v1.StatusRejected, proposal.Status)
+		})
+	}
+}
+
+func TestEndBlockerQuorumCheck(t *testing.T) {
+	params := v1.DefaultParams()
+	params.QuorumCheckCount = 10 // enable quorum check
+	quorumTimeout := *params.VotingPeriod - time.Hour*8
+	params.QuorumTimeout = &quorumTimeout
+	testcases := []struct {
+		name                            string
+		reachQuorumAfter                time.Duration
+		expectedStatusAfterVotingPeriod v1.ProposalStatus
+		expectedVotingPeriod            time.Duration
+	}{
+		{
+			name:                            "reach quorum before timeout: voting period not extended",
+			reachQuorumAfter:                quorumTimeout - time.Hour,
+			expectedStatusAfterVotingPeriod: v1.StatusPassed,
+			expectedVotingPeriod:            *params.VotingPeriod,
+		},
+		{
+			name:                            "reach quorum exactly at timeout: voting period not extended",
+			reachQuorumAfter:                quorumTimeout,
+			expectedStatusAfterVotingPeriod: v1.StatusPassed,
+			expectedVotingPeriod:            *params.VotingPeriod,
+		},
+		{
+			name:                            "quorum never reached: voting period not extended",
+			reachQuorumAfter:                0,
+			expectedStatusAfterVotingPeriod: v1.StatusRejected,
+			expectedVotingPeriod:            *params.VotingPeriod,
+		},
+		{
+			name:                            "reach quorum after timeout, voting period extended",
+			reachQuorumAfter:                quorumTimeout + time.Hour,
+			expectedStatusAfterVotingPeriod: v1.StatusVotingPeriod,
+			expectedVotingPeriod: *params.VotingPeriod + *params.MaxVotingPeriodExtension -
+				(*params.VotingPeriod - quorumTimeout - time.Hour),
+		},
+		{
+			name:                            "reach quorum exactly at voting period, voting period extended",
+			reachQuorumAfter:                *params.VotingPeriod,
+			expectedStatusAfterVotingPeriod: v1.StatusVotingPeriod,
+			expectedVotingPeriod:            *params.VotingPeriod + *params.MaxVotingPeriodExtension,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			suite := createTestSuite(t)
+			app := suite.App
+			ctx := app.BaseApp.NewContext(false)
+			err := suite.GovKeeper.Params.Set(ctx, params)
+			require.NoError(t, err)
+			addrs := simtestutil.AddTestAddrs(suite.BankKeeper, suite.StakingKeeper, ctx, 10, valTokens)
+			app.FinalizeBlock(&abci.RequestFinalizeBlock{
+				Height: app.LastBlockHeight() + 1,
+				Hash:   app.LastCommitID().Hash,
+			})
+			// Create a validator so that able to vote on proposal.
+			valAddr := sdk.ValAddress(addrs[0])
+			stakingMsgSvr := stakingkeeper.NewMsgServerImpl(suite.StakingKeeper)
+			createValidators(t, stakingMsgSvr, ctx, []sdk.ValAddress{valAddr}, []int64{10})
+			suite.StakingKeeper.EndBlocker(ctx)
+			// Create a proposal
+			govMsgSvr := keeper.NewMsgServerImpl(suite.GovKeeper)
+			newProposalMsg, err := v1.NewMsgSubmitProposal(
+				[]sdk.Msg{mkTestLegacyContent(t)},
+				sdk.Coins{sdk.NewInt64Coin(sdk.DefaultBondDenom, 5)},
+				addrs[0].String(), "", "Proposal", "description of proposal", false,
+			)
+			require.NoError(t, err)
+			res, err := govMsgSvr.SubmitProposal(ctx, newProposalMsg)
+			require.NoError(t, err)
+			require.NotNil(t, res)
+			// Activate proposal
+			newDepositMsg := v1.NewMsgDeposit(addrs[1], res.ProposalId, params.MinDeposit)
+			res1, err := govMsgSvr.Deposit(ctx, newDepositMsg)
+			require.NoError(t, err)
+			require.NotNil(t, res1)
+			prop, err := suite.GovKeeper.Proposals.Get(ctx, res.ProposalId)
+			require.NoError(t, err)
+
+			// Call EndBlock until the initial voting period has elapsed
+			// Tick is one hour
+			var (
+				startTime = ctx.BlockTime()
+				tick      = time.Hour
+			)
+			for ctx.BlockTime().Sub(startTime) < *params.VotingPeriod {
+				// Forward in time
+				newTime := ctx.BlockTime().Add(tick)
+				ctx = ctx.WithBlockTime(newTime)
+				if tc.reachQuorumAfter != 0 && newTime.Sub(startTime) >= tc.reachQuorumAfter {
+					// Set quorum as reached
+					err := suite.GovKeeper.AddVote(ctx, prop.Id, addrs[0], v1.NewNonSplitVoteOption(v1.OptionYes), "")
+					require.NoError(t, err)
+					// Don't go there again
+					tc.reachQuorumAfter = 0
+				}
+
+				err = gov.EndBlocker(ctx, suite.GovKeeper)
+
+				require.NoError(t, err)
+			}
+
+			// Assertions
+			prop, err = suite.GovKeeper.Proposals.Get(ctx, prop.Id) // Get fresh prop
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedStatusAfterVotingPeriod.String(), prop.Status.String())
+			assert.Equal(t, tc.expectedVotingPeriod, prop.VotingEndTime.Sub(*prop.VotingStartTime))
+			// Assert that QuorumCheckQueue doesn't contain prop any more
+			err = suite.GovKeeper.QuorumCheckQueue.Walk(ctx, nil,
+				func(key collections.Pair[time.Time, uint64], _ v1.QuorumCheckQueueEntry) (bool, error) {
+					if key.K2() == prop.Id {
+						assert.Fail(t, "QuorumCheckQueue dirty")
+						return true, nil
+					}
+					return false, nil
+				})
 		})
 	}
 }
