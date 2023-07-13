@@ -75,8 +75,9 @@ func InitGenesis(ctx sdk.Context, ak types.AccountKeeper, bk types.BankKeeper, k
 		if !proposal.Expedited && proposal.Status == v1.StatusVotingPeriod {
 			quorumTimeoutTime := proposal.VotingStartTime.Add(*data.Params.QuorumTimeout)
 			quorumCheckEntry := v1.NewQuorumCheckQueueEntry(quorumTimeoutTime, data.Params.QuorumCheckCount)
+			quorum := false
 			if ctx.BlockTime().After(quorumTimeoutTime) {
-				quorum, err := k.HasReachedQuorum(ctx, *proposal)
+				quorum, err = k.HasReachedQuorum(ctx, *proposal)
 				if err != nil {
 					panic(err)
 				}
@@ -87,9 +88,11 @@ func InitGenesis(ctx sdk.Context, ak types.AccountKeeper, bk types.BankKeeper, k
 					quorumCheckEntry.QuorumCheckTimestamps = append(quorumCheckEntry.QuorumCheckTimestamps, &quorumTimeoutTime)
 				}
 			}
-			err = k.QuorumCheckQueue.Set(ctx, collections.Join(quorumTimeoutTime, proposal.Id), quorumCheckEntry)
-			if err != nil {
-				panic(err)
+			if !quorum {
+				err = k.QuorumCheckQueue.Set(ctx, collections.Join(quorumTimeoutTime, proposal.Id), quorumCheckEntry)
+				if err != nil {
+					panic(err)
+				}
 			}
 		}
 	}
