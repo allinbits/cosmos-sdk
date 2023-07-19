@@ -1,7 +1,6 @@
 package gov_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -11,9 +10,9 @@ import (
 	"cosmossdk.io/collections"
 	sdkmath "cosmossdk.io/math"
 
+	"github.com/cosmos/cosmos-sdk/codec"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/x/gov"
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	v1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
@@ -52,6 +51,13 @@ func TestInitGenesis(t *testing.T) {
 		params    = &v1.Params{
 			MinDeposit: sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdkmath.NewInt(42))),
 		}
+		quorumTimeout                = time.Hour * 20
+		paramsWithQuorumCheckEnabled = &v1.Params{
+			MinDeposit:       sdk.NewCoins(sdk.NewCoin(sdk.DefaultBondDenom, sdkmath.NewInt(42))),
+			QuorumCheckCount: 10,
+			QuorumTimeout:    &quorumTimeout,
+		}
+
 		depositAmount = sdk.Coins{
 			sdk.NewCoin(
 				"stake",
@@ -82,50 +88,67 @@ func TestInitGenesis(t *testing.T) {
 				Options:    v1.NewNonSplitVoteOption(v1.OptionNo),
 			},
 		}
-		msgs, _        = sdktx.SetMsgs([]sdk.Msg{mkTestLegacyContent(t)})
-		depositEndTime = time.Now().Add(time.Hour * 8)
-		votingEndTime  = time.Now().Add(time.Hour * 24)
-		proposals      = []*v1.Proposal{
+		depositEndTime  = time.Now().Add(time.Hour * 8)
+		votingStartTime = time.Now()
+		votingEndTime   = time.Now().Add(time.Hour * 24)
+		proposals       = []*v1.Proposal{
 			{
-				Id:             1234,
-				Messages:       msgs,
-				Status:         v1.StatusVotingPeriod,
-				DepositEndTime: &depositEndTime,
-				VotingEndTime:  &votingEndTime,
+				Id:              1234,
+				Status:          v1.StatusVotingPeriod,
+				DepositEndTime:  &depositEndTime,
+				VotingStartTime: &votingStartTime,
+				VotingEndTime:   &votingEndTime,
 			},
 			{
-				Id:             12345,
-				Messages:       msgs,
-				Status:         v1.StatusDepositPeriod,
-				DepositEndTime: &depositEndTime,
-				VotingEndTime:  &votingEndTime,
+				Id:              12345,
+				Status:          v1.StatusDepositPeriod,
+				DepositEndTime:  &depositEndTime,
+				VotingStartTime: &votingStartTime,
+				VotingEndTime:   &votingEndTime,
+			},
+			{
+				Id:              123456,
+				Status:          v1.StatusVotingPeriod,
+				Expedited:       true,
+				DepositEndTime:  &depositEndTime,
+				VotingStartTime: &votingStartTime,
+				VotingEndTime:   &votingEndTime,
 			},
 		}
 		assertProposals = func(t *testing.T, ctx sdk.Context, s suite, expectedProposals []*v1.Proposal) {
 			assert := assert.New(t)
 			require := require.New(t)
+			params, err := s.GovKeeper.Params.Get(ctx)
 			it, err := s.GovKeeper.Proposals.Iterate(ctx, nil)
 			require.NoError(err)
-			ps, err := it.Values()
+			proposals, err := it.Values()
 			require.NoError(err)
-			var expectedPs []v1.Proposal // turn []*v1.Proposal to []v1.Proposal for assertion
-			for _, p := range expectedProposals {
-				expectedPs = append(expectedPs, *p)
+			cdc := codec.NewLegacyAmino()
+			expPropJSON := cdc.MustMarshalJSON(expectedProposals)
+			propJSON := cdc.MustMarshalJSON(proposals)
+			assert.JSONEq(string(expPropJSON), string(propJSON))
+			// Check gov queues
+			mustBool := func(b bool, err error) bool {
+				require.NoError(err)
+				return b
 			}
-			assert.Equal(expectedPs[0], ps[0], "XXX") // TIME DOESN"T WORK!
-			return
-			assert.ElementsMatch(expectedPs, ps)
-			for _, p := range expectedProposals {
-				fmt.Println("ASSERT", p.Status)
+			for _, p := range proposals {
 				switch p.Status {
 				case v1.StatusVotingPeriod:
-					assert.True(s.GovKeeper.ActiveProposalsQueue.Has(ctx, collections.Join(*p.VotingEndTime, p.Id)))
-					assert.False(s.GovKeeper.InactiveProposalsQueue.Has(ctx, collections.Join(*p.DepositEndTime, p.Id)))
-					assert.True(s.GovKeeper.VotingPeriodProposals.Has(ctx, p.Id))
+					assert.True(mustBool(s.GovKeeper.ActiveProposalsQueue.Has(ctx, collections.Join(*p.VotingEndTime, p.Id))))
+					assert.False(mustBool((s.GovKeeper.InactiveProposalsQueue.Has(ctx, collections.Join(*p.DepositEndTime, p.Id)))))
+					assert.True(mustBool((s.GovKeeper.VotingPeriodProposals.Has(ctx, p.Id))))
+					if params.QuorumCheckCount > 0 {
+						if p.Expedited {
+							assert.False(mustBool(s.GovKeeper.QuorumCheckQueue.Has(ctx, collections.Join(p.VotingStartTime.Add(*params.QuorumTimeout), p.Id))))
+						} else {
+							assert.True(mustBool(s.GovKeeper.QuorumCheckQueue.Has(ctx, collections.Join(p.VotingStartTime.Add(*params.QuorumTimeout), p.Id))))
+						}
+					}
 				case v1.StatusDepositPeriod:
-					assert.False(s.GovKeeper.ActiveProposalsQueue.Has(ctx, collections.Join(*p.VotingEndTime, p.Id)))
-					assert.True(s.GovKeeper.InactiveProposalsQueue.Has(ctx, collections.Join(*p.DepositEndTime, p.Id)))
-					assert.False(s.GovKeeper.VotingPeriodProposals.Has(ctx, p.Id))
+					assert.False(mustBool((s.GovKeeper.ActiveProposalsQueue.Has(ctx, collections.Join(*p.VotingEndTime, p.Id)))))
+					assert.True(mustBool((s.GovKeeper.InactiveProposalsQueue.Has(ctx, collections.Join(*p.DepositEndTime, p.Id)))))
+					assert.False(mustBool((s.GovKeeper.VotingPeriodProposals.Has(ctx, p.Id))))
 				}
 			}
 		}
@@ -225,6 +248,19 @@ func TestInitGenesis(t *testing.T) {
 				p, err := s.GovKeeper.Params.Get(ctx)
 				require.NoError(t, err)
 				assert.Equal(t, *params, p)
+				assertProposals(t, ctx, s, proposals)
+			},
+		},
+		{
+			name: "ok: genesis with proposals and quorum check enabled",
+			genesis: v1.GenesisState{
+				Params:    paramsWithQuorumCheckEnabled,
+				Proposals: proposals,
+			},
+			assert: func(t *testing.T, ctx sdk.Context, s suite) {
+				p, err := s.GovKeeper.Params.Get(ctx)
+				require.NoError(t, err)
+				assert.Equal(t, *paramsWithQuorumCheckEnabled, p)
 				assertProposals(t, ctx, s, proposals)
 			},
 		},

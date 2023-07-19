@@ -72,7 +72,9 @@ func InitGenesis(ctx sdk.Context, ak types.AccountKeeper, bk types.BankKeeper, k
 		if err != nil {
 			panic(err)
 		}
-		if !proposal.Expedited && proposal.Status == v1.StatusVotingPeriod {
+		if data.Params.QuorumCheckCount > 0 &&
+			!proposal.Expedited &&
+			proposal.Status == v1.StatusVotingPeriod {
 			quorumTimeoutTime := proposal.VotingStartTime.Add(*data.Params.QuorumTimeout)
 			quorumCheckEntry := v1.NewQuorumCheckQueueEntry(quorumTimeoutTime, data.Params.QuorumCheckCount)
 			quorum := false
