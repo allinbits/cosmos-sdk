@@ -174,10 +174,8 @@ message QuorumCheckQueueEntry {
   // proposal is initially added to the queue.
   uint64 quorum_check_count = 2;
 
-  // quorum_check_timestamps is a list of times when quorum checks have been done.
-  // any entry in this list corresponds to a time when quorum was checked and
-  // not reached, since proposal would be removed from queue otherwise.
-  repeated google.protobuf.Timestamp quorum_check_timestamps = 3 [(gogoproto.stdtime) = true];
+  // quorum_checks_done is the number of quorum checks that have been done.
+  uint64 quorum_checks_done = 3;
 }
 
 // DepositParams defines the params for deposits on governance proposals.

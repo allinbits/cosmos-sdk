@@ -116,7 +116,7 @@ func (suite *KeeperTestSuite) TestActivateVotingPeriod() {
 			suite.Require().NoError(err)
 			suite.Require().EqualValues(quorumTimeoutTime, *quorumCheckEntry.QuorumTimeoutTime)
 			suite.Require().EqualValues(params.QuorumCheckCount, quorumCheckEntry.QuorumCheckCount)
-			suite.Require().Empty(quorumCheckEntry.QuorumCheckTimestamps)
+			suite.Require().Zero(quorumCheckEntry.QuorumChecksDone)
 		} else {
 			suite.Require().False(hasQuorumCheck)
 		}

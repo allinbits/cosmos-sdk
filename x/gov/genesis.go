@@ -72,9 +72,7 @@ func InitGenesis(ctx sdk.Context, ak types.AccountKeeper, bk types.BankKeeper, k
 		if err != nil {
 			panic(err)
 		}
-		if data.Params.QuorumCheckCount > 0 &&
-			!proposal.Expedited &&
-			proposal.Status == v1.StatusVotingPeriod {
+		if data.Params.QuorumCheckCount > 0 && !proposal.Expedited && proposal.Status == v1.StatusVotingPeriod {
 			quorumTimeoutTime := proposal.VotingStartTime.Add(*data.Params.QuorumTimeout)
 			quorumCheckEntry := v1.NewQuorumCheckQueueEntry(quorumTimeoutTime, data.Params.QuorumCheckCount)
 			quorum := false
@@ -85,9 +83,9 @@ func InitGenesis(ctx sdk.Context, ak types.AccountKeeper, bk types.BankKeeper, k
 				}
 				if !quorum {
 					// since we don't export the state of the quorum check queue, we can't know how many checks were actually
-					// done. However, in order to trigger a vote time extension, it is enough to have at least one item
-					// in quorumCheckEntry.QuorumCheckTimestamps, which we canonically set to be the quorumTimeoutTime
-					quorumCheckEntry.QuorumCheckTimestamps = append(quorumCheckEntry.QuorumCheckTimestamps, &quorumTimeoutTime)
+					// done. However, in order to trigger a vote time extension, it is enough to have QuorumChecksDone > 0 to
+					// trigger a vote time extension, so we set it to 1
+					quorumCheckEntry.QuorumChecksDone = 1
 				}
 			}
 			if !quorum {

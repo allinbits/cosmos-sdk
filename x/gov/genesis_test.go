@@ -119,6 +119,7 @@ func TestInitGenesis(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 			params, err := s.GovKeeper.Params.Get(ctx)
+			require.NoError(err)
 			it, err := s.GovKeeper.Proposals.Iterate(ctx, nil)
 			require.NoError(err)
 			proposals, err := it.Values()
