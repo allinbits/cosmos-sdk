@@ -423,20 +423,26 @@ func TestExpeditedProposal_PassAndConversionToRegular(t *testing.T) {
 		expeditedPasses bool
 		// indicates whether the converted regular proposal is expected to eventually pass
 		regularEventuallyPassing bool
+		// indicates the number for quorum checks to be performed, and as a consequence if this functionality is enabled
+		// this value will be used to set the corresponding parameter
+		quorumCheckCount uint64
 	}{
 		{
-			name:            "expedited passes and not converted to regular",
-			expeditedPasses: true,
+			name:             "expedited passes and not converted to regular",
+			expeditedPasses:  true,
+			quorumCheckCount: 1,
 		},
 		{
 			name:                     "expedited fails, converted to regular - regular eventually passes",
 			expeditedPasses:          false,
 			regularEventuallyPassing: true,
+			quorumCheckCount:         1,
 		},
 		{
 			name:                     "expedited fails, converted to regular - regular eventually fails",
 			expeditedPasses:          false,
 			regularEventuallyPassing: false,
+			quorumCheckCount:         0,
 		},
 	}
 
@@ -448,6 +454,11 @@ func TestExpeditedProposal_PassAndConversionToRegular(t *testing.T) {
 			depositMultiplier := getDepositMultiplier(true)
 			addrs := simtestutil.AddTestAddrs(suite.BankKeeper, suite.StakingKeeper, ctx, 3, valTokens.Mul(math.NewInt(depositMultiplier)))
 			params, err := suite.GovKeeper.Params.Get(ctx)
+			if params.QuorumCheckCount != tc.quorumCheckCount {
+				params.QuorumCheckCount = tc.quorumCheckCount
+				err := suite.GovKeeper.Params.Set(ctx, params)
+				require.NoError(t, err)
+			}
 			require.NoError(t, err)
 
 			SortAddresses(addrs)
@@ -520,6 +531,7 @@ func TestExpeditedProposal_PassAndConversionToRegular(t *testing.T) {
 			require.NoError(t, err)
 			if tc.expeditedPasses {
 				checkActiveProposalsQueue(t, ctx, suite.GovKeeper, true)
+				checkQuorumCheckQueue(t, ctx, suite.GovKeeper, true)
 
 				proposal, err = suite.GovKeeper.Proposals.Get(ctx, res.ProposalId)
 				require.Nil(t, err)
@@ -563,6 +575,7 @@ func TestExpeditedProposal_PassAndConversionToRegular(t *testing.T) {
 
 			checkInactiveProposalsQueue(t, ctx, suite.GovKeeper, true)
 			checkActiveProposalsQueue(t, ctx, suite.GovKeeper, false)
+			checkQuorumCheckQueue(t, ctx, suite.GovKeeper, tc.quorumCheckCount == 0)
 
 			if tc.regularEventuallyPassing {
 				// Validator votes YES, letting the converted regular proposal pass.
@@ -611,31 +624,42 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 	quorumTimeout := *params.VotingPeriod - time.Hour*8
 	params.QuorumTimeout = &quorumTimeout
 	testcases := []struct {
-		name                            string
-		reachQuorumAfter                time.Duration
+		name string
+		// the value of the MaxVotingPeriodExtension param
+		maxVotingPeriodExtension time.Duration
+		// the duration after which the proposal reaches quorum
+		reachQuorumAfter time.Duration
+		// the expected status of the proposal after the original voting period has elapsed
 		expectedStatusAfterVotingPeriod v1.ProposalStatus
-		expectedVotingPeriod            time.Duration
+		// the expected final voting period after the original period has elapsed
+		// the value would be modified if voting period is extended due to quorum being reached
+		// after the quorum timeout
+		expectedVotingPeriod time.Duration
 	}{
 		{
 			name:                            "reach quorum before timeout: voting period not extended",
+			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                quorumTimeout - time.Hour,
 			expectedStatusAfterVotingPeriod: v1.StatusPassed,
 			expectedVotingPeriod:            *params.VotingPeriod,
 		},
 		{
 			name:                            "reach quorum exactly at timeout: voting period not extended",
+			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                quorumTimeout,
 			expectedStatusAfterVotingPeriod: v1.StatusPassed,
 			expectedVotingPeriod:            *params.VotingPeriod,
 		},
 		{
 			name:                            "quorum never reached: voting period not extended",
+			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                0,
 			expectedStatusAfterVotingPeriod: v1.StatusRejected,
 			expectedVotingPeriod:            *params.VotingPeriod,
 		},
 		{
 			name:                            "reach quorum after timeout, voting period extended",
+			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                quorumTimeout + time.Hour,
 			expectedStatusAfterVotingPeriod: v1.StatusVotingPeriod,
 			expectedVotingPeriod: *params.VotingPeriod + *params.MaxVotingPeriodExtension -
@@ -643,9 +667,17 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 		},
 		{
 			name:                            "reach quorum exactly at voting period, voting period extended",
+			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                *params.VotingPeriod,
 			expectedStatusAfterVotingPeriod: v1.StatusVotingPeriod,
 			expectedVotingPeriod:            *params.VotingPeriod + *params.MaxVotingPeriodExtension,
+		},
+		{
+			name:                            "reach quorum after timeout but voting period extension too short, voting period not extended",
+			maxVotingPeriodExtension:        time.Hour,
+			reachQuorumAfter:                quorumTimeout + time.Hour,
+			expectedStatusAfterVotingPeriod: v1.StatusPassed,
+			expectedVotingPeriod:            *params.VotingPeriod,
 		},
 	}
 	for _, tc := range testcases {
@@ -653,6 +685,7 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 			suite := createTestSuite(t)
 			app := suite.App
 			ctx := app.BaseApp.NewContext(false)
+			params.MaxVotingPeriodExtension = &tc.maxVotingPeriodExtension
 			err := suite.GovKeeper.Params.Set(ctx, params)
 			require.NoError(t, err)
 			addrs := simtestutil.AddTestAddrs(suite.BankKeeper, suite.StakingKeeper, ctx, 10, valTokens)
@@ -660,7 +693,7 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 				Height: app.LastBlockHeight() + 1,
 				Hash:   app.LastCommitID().Hash,
 			})
-			// Create a validator so that able to vote on proposal.
+			// Create a validator
 			valAddr := sdk.ValAddress(addrs[0])
 			stakingMsgSvr := stakingkeeper.NewMsgServerImpl(suite.StakingKeeper)
 			createValidators(t, stakingMsgSvr, ctx, []sdk.ValAddress{valAddr}, []int64{10})
@@ -712,16 +745,7 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedStatusAfterVotingPeriod.String(), prop.Status.String())
 			assert.Equal(t, tc.expectedVotingPeriod, prop.VotingEndTime.Sub(*prop.VotingStartTime))
-			// Assert that QuorumCheckQueue doesn't contain prop any more
-			err = suite.GovKeeper.QuorumCheckQueue.Walk(ctx, nil,
-				func(key collections.Pair[time.Time, uint64], _ v1.QuorumCheckQueueEntry) (bool, error) {
-					if key.K2() == prop.Id {
-						assert.Fail(t, "QuorumCheckQueue dirty")
-						return true, nil
-					}
-					return false, nil
-				})
-			require.ErrorIs(t, err, collections.ErrInvalidIterator)
+			checkQuorumCheckQueue(t, ctx, suite.GovKeeper, true)
 		})
 	}
 }
@@ -769,6 +793,18 @@ func checkActiveProposalsQueue(t *testing.T, ctx sdk.Context, k *keeper.Keeper, 
 func checkInactiveProposalsQueue(t *testing.T, ctx sdk.Context, k *keeper.Keeper, invalid bool) {
 	t.Helper()
 	err := k.InactiveProposalsQueue.Walk(ctx, collections.NewPrefixUntilPairRange[time.Time, uint64](ctx.BlockTime()), func(key collections.Pair[time.Time, uint64], value uint64) (stop bool, err error) {
+		return false, err
+	})
+	if invalid {
+		require.ErrorIs(t, err, collections.ErrInvalidIterator)
+	} else {
+		require.NoError(t, err)
+	}
+}
+
+func checkQuorumCheckQueue(t *testing.T, ctx sdk.Context, k *keeper.Keeper, invalid bool) {
+	t.Helper()
+	err := k.QuorumCheckQueue.Walk(ctx, collections.NewPrefixUntilPairRange[time.Time, uint64](ctx.BlockTime()), func(key collections.Pair[time.Time, uint64], _ v1.QuorumCheckQueueEntry) (stop bool, err error) {
 		return false, err
 	})
 	if invalid {
