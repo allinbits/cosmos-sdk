@@ -3,6 +3,7 @@ package keeper
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"cosmossdk.io/collections"
 	"cosmossdk.io/math"
@@ -106,16 +107,19 @@ func (keeper Keeper) Tally(ctx context.Context, proposal v1.Proposal) (passes, b
 		}
 		totalVotingPower = totalVotingPower.Add(votingPower)
 	}
+	fmt.Println("TOTAL VOTING POWER", totalVotingPower)
 
 	params, err := keeper.Params.Get(ctx)
 	if err != nil {
 		return false, false, tallyResults, err
 	}
 	tallyResults = v1.NewTallyResultFromMap(results)
+	fmt.Println("TALLY", tallyResults)
 
 	// TODO: Upgrade the spec to cover all of these cases & remove pseudocode.
 	// If there is no staked coins, the proposal fails
 	totalBonded, err := keeper.sk.TotalBondedTokens(ctx)
+	fmt.Println("TOTAL BONDED", totalBonded)
 	if err != nil {
 		return false, false, tallyResults, err
 	}
@@ -127,6 +131,7 @@ func (keeper Keeper) Tally(ctx context.Context, proposal v1.Proposal) (passes, b
 	// If there is not enough quorum of votes, the proposal fails
 	percentVoting := totalVotingPower.Quo(math.LegacyNewDecFromInt(totalBonded))
 	quorum, _ := math.LegacyNewDecFromStr(params.Quorum)
+	fmt.Println("VOTING", percentVoting, "QUTORUM", quorum)
 	if percentVoting.LT(quorum) {
 		return false, params.BurnVoteQuorum, tallyResults, nil
 	}
