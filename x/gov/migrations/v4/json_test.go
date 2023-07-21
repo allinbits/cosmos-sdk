@@ -73,6 +73,7 @@ func TestMigrateJSON(t *testing.T) {
 		"expedited_threshold": "0.667000000000000000",
 		"expedited_voting_period": "86400s",
 		"max_deposit_period": "172800s",
+		"max_voting_period_extension": "86400s",
 		"min_deposit": [
 			{
 				"amount": "10000000",
@@ -83,6 +84,8 @@ func TestMigrateJSON(t *testing.T) {
 		"proposal_cancel_dest": "",
 		"proposal_cancel_ratio": "0.500000000000000000",
 		"quorum": "0.334000000000000000",
+		"quorum_check_count": "0",
+		"quorum_timeout": "86400s",
 		"threshold": "0.500000000000000000",
 		"veto_threshold": "0.334000000000000000",
 		"voting_period": "172800s"

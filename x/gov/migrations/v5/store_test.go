@@ -43,4 +43,7 @@ func TestMigrateStore(t *testing.T) {
 	require.Equal(t, v1.DefaultParams().ExpeditedMinDeposit, params.ExpeditedMinDeposit)
 	require.Equal(t, v1.DefaultParams().ExpeditedThreshold, params.ExpeditedThreshold)
 	require.Equal(t, v1.DefaultParams().ExpeditedVotingPeriod, params.ExpeditedVotingPeriod)
+	require.Equal(t, v1.DefaultParams().QuorumTimeout, params.QuorumTimeout)
+	require.Equal(t, v1.DefaultParams().MaxVotingPeriodExtension, params.MaxVotingPeriodExtension)
+	require.Equal(t, v1.DefaultParams().QuorumCheckCount, params.QuorumCheckCount)
 }
