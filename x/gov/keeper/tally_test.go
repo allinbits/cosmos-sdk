@@ -30,6 +30,27 @@ func TestTally(t *testing.T) {
 		distKeeper    *govtestutil.MockDistributionKeeper
 		codec         moduletestutil.TestEncodingConfig
 	}
+
+	var (
+		// handy functions
+		delegatorVote = func(s suite, voter sdk.AccAddress, delegations []stakingtypes.Delegation, vote v1.VoteOption) {
+			err := s.keeper.AddVote(s.ctx, s.proposal.Id, voter, v1.NewNonSplitVoteOption(vote), "")
+			require.NoError(s.t, err)
+			s.stakingKeeper.EXPECT().
+				IterateDelegations(s.ctx, voter, gomock.Any()).
+				DoAndReturn(
+					func(ctx context.Context, voter sdk.AccAddress, fn func(index int64, d stakingtypes.DelegationI) bool) error {
+						for i, d := range delegations {
+							fn(int64(i), d)
+						}
+						return nil
+					})
+		}
+		validatorVote = func(s suite, voter sdk.ValAddress, vote v1.VoteOption) {
+			// validatorVote is like delegatorVote but without delegations
+			delegatorVote(s, sdk.AccAddress(voter), nil, vote)
+		}
+	)
 	tests := []struct {
 		name          string
 		expedited     bool
@@ -54,10 +75,7 @@ func TestTally(t *testing.T) {
 		{
 			name: "one validator vote",
 			setup: func(s suite) {
-				voter := sdk.AccAddress(s.valAddrs[0])
-				err := s.keeper.AddVote(s.ctx, s.proposal.Id, voter, v1.NewNonSplitVoteOption(v1.VoteOption_VOTE_OPTION_NO), "")
-				require.NoError(s.t, err)
-				s.stakingKeeper.EXPECT().IterateDelegations(s.ctx, voter, gomock.Any())
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
 			},
 			expectedPass: false,
 			expectedBurn: false,
@@ -71,10 +89,7 @@ func TestTally(t *testing.T) {
 		{
 			name: "one user vote without delegation",
 			setup: func(s suite) {
-				voter := s.delAddrs[0]
-				err := s.keeper.AddVote(s.ctx, s.proposal.Id, voter, v1.NewNonSplitVoteOption(v1.VoteOption_VOTE_OPTION_YES), "")
-				require.NoError(s.t, err)
-				s.stakingKeeper.EXPECT().IterateDelegations(s.ctx, voter, gomock.Any())
+				delegatorVote(s, s.delAddrs[0], nil, v1.VoteOption_VOTE_OPTION_YES)
 			},
 			expectedPass: false,
 			expectedBurn: false,
@@ -88,20 +103,12 @@ func TestTally(t *testing.T) {
 		{
 			name: "one delegator vote",
 			setup: func(s suite) {
-				voter := s.delAddrs[0]
-				err := s.keeper.AddVote(s.ctx, s.proposal.Id, voter, v1.NewNonSplitVoteOption(v1.VoteOption_VOTE_OPTION_YES), "")
-				require.NoError(s.t, err)
-				s.stakingKeeper.EXPECT().
-					IterateDelegations(s.ctx, voter, gomock.Any()).
-					DoAndReturn(
-						func(ctx context.Context, voter sdk.AccAddress, fn func(index int64, d stakingtypes.DelegationI) bool) error {
-							fn(0, stakingtypes.Delegation{
-								DelegatorAddress: voter.String(),
-								ValidatorAddress: s.valAddrs[0].String(),
-								Shares:           sdkmath.LegacyNewDec(42),
-							})
-							return nil
-						})
+				delegations := []stakingtypes.Delegation{{
+					DelegatorAddress: s.delAddrs[0].String(),
+					ValidatorAddress: s.valAddrs[0].String(),
+					Shares:           sdkmath.LegacyNewDec(42),
+				}}
+				delegatorVote(s, s.delAddrs[0], delegations, v1.VoteOption_VOTE_OPTION_YES)
 			},
 			expectedPass: false,
 			expectedBurn: false,
@@ -113,29 +120,35 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
+			name: "one delegator vote yes, validator vote also yes",
+			setup: func(s suite) {
+				delegations := []stakingtypes.Delegation{{
+					DelegatorAddress: s.delAddrs[0].String(),
+					ValidatorAddress: s.valAddrs[0].String(),
+					Shares:           sdkmath.LegacyNewDec(42),
+				}}
+				delegatorVote(s, s.delAddrs[0], delegations, v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
+			},
+			expectedPass: false,
+			expectedBurn: false,
+			expectedTally: v1.TallyResult{
+				YesCount:        "1000000",
+				AbstainCount:    "0",
+				NoCount:         "0",
+				NoWithVetoCount: "0",
+			},
+		},
+		{
 			name: "one delegator vote yes, validator vote no",
 			setup: func(s suite) {
-				var (
-					delegatorVoter = s.delAddrs[0]
-					validatorVoter = sdk.AccAddress(s.valAddrs[0])
-				)
-				err := s.keeper.AddVote(s.ctx, s.proposal.Id, delegatorVoter, v1.NewNonSplitVoteOption(v1.VoteOption_VOTE_OPTION_YES), "")
-				require.NoError(s.t, err)
-				require.NoError(s.t, err)
-				s.stakingKeeper.EXPECT().
-					IterateDelegations(s.ctx, delegatorVoter, gomock.Any()).
-					DoAndReturn(
-						func(ctx context.Context, voter sdk.AccAddress, fn func(index int64, d stakingtypes.DelegationI) bool) error {
-							fn(0, stakingtypes.Delegation{
-								DelegatorAddress: voter.String(),
-								ValidatorAddress: s.valAddrs[0].String(),
-								Shares:           sdkmath.LegacyNewDec(42),
-							})
-							return nil
-						})
-
-				err = s.keeper.AddVote(s.ctx, s.proposal.Id, validatorVoter, v1.NewNonSplitVoteOption(v1.VoteOption_VOTE_OPTION_NO), "")
-				s.stakingKeeper.EXPECT().IterateDelegations(s.ctx, validatorVoter, gomock.Any())
+				delegations := []stakingtypes.Delegation{{
+					DelegatorAddress: s.delAddrs[0].String(),
+					ValidatorAddress: s.valAddrs[0].String(),
+					Shares:           sdkmath.LegacyNewDec(42),
+				}}
+				delegatorVote(s, s.delAddrs[0], delegations, v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
 			},
 			expectedPass: false,
 			expectedBurn: false,
@@ -175,7 +188,7 @@ func TestTally(t *testing.T) {
 						}
 						return nil
 					})
-			// Submit and activate proposal
+			// Submit and activate a proposal
 			proposal, err := govKeeper.SubmitProposal(ctx, TestProposal, "", "title", "summary", delAddrs[0], tt.expedited)
 			require.NoError(t, err)
 			err = govKeeper.ActivateVotingPeriod(ctx, proposal)
