@@ -143,6 +143,7 @@ func (keeper Keeper) Tally(ctx context.Context, proposal v1.Proposal) (passes, b
 
 	// If more than 1/3 of voters veto, proposal fails
 	vetoThreshold, _ := math.LegacyNewDecFromStr(params.VetoThreshold)
+	fmt.Println("VETO", vetoThreshold, results[v1.OptionNoWithVeto].Quo(totalVotingPower))
 	if results[v1.OptionNoWithVeto].Quo(totalVotingPower).GT(vetoThreshold) {
 		return false, params.BurnVoteVeto, tallyResults, nil
 	}

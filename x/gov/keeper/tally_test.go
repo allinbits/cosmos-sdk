@@ -5,6 +5,10 @@ import (
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
@@ -12,8 +16,6 @@ import (
 	govtestutil "github.com/cosmos/cosmos-sdk/x/gov/testutil"
 	v1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTally(t *testing.T) {
@@ -64,7 +66,7 @@ func TestTally(t *testing.T) {
 			name:         "no votes",
 			setup:        func(s suite) {},
 			expectedPass: false,
-			expectedBurn: false,
+			expectedBurn: true,
 			expectedTally: v1.TallyResult{
 				YesCount:        "0",
 				AbstainCount:    "0",
@@ -73,12 +75,12 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one validator vote",
+			name: "one validator votes",
 			setup: func(s suite) {
 				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
 			},
 			expectedPass: false,
-			expectedBurn: false,
+			expectedBurn: true,
 			expectedTally: v1.TallyResult{
 				YesCount:        "0",
 				AbstainCount:    "0",
@@ -87,12 +89,12 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one user vote without delegation",
+			name: "one account votes without delegation",
 			setup: func(s suite) {
 				delegatorVote(s, s.delAddrs[0], nil, v1.VoteOption_VOTE_OPTION_YES)
 			},
 			expectedPass: false,
-			expectedBurn: false,
+			expectedBurn: true,
 			expectedTally: v1.TallyResult{
 				YesCount:        "0",
 				AbstainCount:    "0",
@@ -101,7 +103,7 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one delegator vote",
+			name: "one delegator votes",
 			setup: func(s suite) {
 				delegations := []stakingtypes.Delegation{{
 					DelegatorAddress: s.delAddrs[0].String(),
@@ -111,7 +113,7 @@ func TestTally(t *testing.T) {
 				delegatorVote(s, s.delAddrs[0], delegations, v1.VoteOption_VOTE_OPTION_YES)
 			},
 			expectedPass: false,
-			expectedBurn: false,
+			expectedBurn: true,
 			expectedTally: v1.TallyResult{
 				YesCount:        "42",
 				AbstainCount:    "0",
@@ -120,7 +122,7 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one delegator vote yes, validator vote also yes",
+			name: "one delegator votes yes, validator votes also yes",
 			setup: func(s suite) {
 				delegations := []stakingtypes.Delegation{{
 					DelegatorAddress: s.delAddrs[0].String(),
@@ -131,7 +133,7 @@ func TestTally(t *testing.T) {
 				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
 			},
 			expectedPass: false,
-			expectedBurn: false,
+			expectedBurn: true,
 			expectedTally: v1.TallyResult{
 				YesCount:        "1000000",
 				AbstainCount:    "0",
@@ -140,7 +142,7 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one delegator vote yes, validator vote no",
+			name: "one delegator votes yes, validator votes no",
 			setup: func(s suite) {
 				delegations := []stakingtypes.Delegation{{
 					DelegatorAddress: s.delAddrs[0].String(),
@@ -151,7 +153,7 @@ func TestTally(t *testing.T) {
 				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
 			},
 			expectedPass: false,
-			expectedBurn: false,
+			expectedBurn: true,
 			expectedTally: v1.TallyResult{
 				YesCount:        "42",
 				AbstainCount:    "0",
@@ -159,10 +161,87 @@ func TestTally(t *testing.T) {
 				NoWithVetoCount: "0",
 			},
 		},
+		{
+			// one delegator delegates 42 shares to 2 different validators (21 each)
+			// delegator votes yes
+			// first validator votes yes
+			// second validator votes no
+			// third validator (no delegation) votes abstain
+			name: "delegator with mixed delegations",
+			setup: func(s suite) {
+				delegations := []stakingtypes.Delegation{
+					{
+						DelegatorAddress: s.delAddrs[0].String(),
+						ValidatorAddress: s.valAddrs[0].String(),
+						Shares:           sdkmath.LegacyNewDec(21),
+					},
+					{
+						DelegatorAddress: s.delAddrs[0].String(),
+						ValidatorAddress: s.valAddrs[1].String(),
+						Shares:           sdkmath.LegacyNewDec(21),
+					},
+				}
+				delegatorVote(s, s.delAddrs[0], delegations, v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_ABSTAIN)
+			},
+			expectedPass: false,
+			expectedBurn: true,
+			expectedTally: v1.TallyResult{
+				YesCount:        "1000021",
+				AbstainCount:    "1000000",
+				NoCount:         "999979",
+				NoWithVetoCount: "0",
+			},
+		},
+		{
+			name: "quorum reached with only abstain",
+			setup: func(s suite) {
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_ABSTAIN)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_ABSTAIN)
+				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_ABSTAIN)
+				validatorVote(s, s.valAddrs[3], v1.VoteOption_VOTE_OPTION_ABSTAIN)
+			},
+			expectedPass: false,
+			expectedBurn: false,
+			expectedTally: v1.TallyResult{
+				YesCount:        "0",
+				AbstainCount:    "4000000",
+				NoCount:         "0",
+				NoWithVetoCount: "0",
+			},
+		},
+		{
+			name: "quorum reached with >1/3 veto",
+			setup: func(s suite) {
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[3], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[4], v1.VoteOption_VOTE_OPTION_NO_WITH_VETO)
+				validatorVote(s, s.valAddrs[5], v1.VoteOption_VOTE_OPTION_NO_WITH_VETO)
+				validatorVote(s, s.valAddrs[6], v1.VoteOption_VOTE_OPTION_NO_WITH_VETO)
+			},
+			expectedPass: false,
+			expectedBurn: true,
+			expectedTally: v1.TallyResult{
+				YesCount:        "4000000",
+				AbstainCount:    "0",
+				NoCount:         "0",
+				NoWithVetoCount: "3000000",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			govKeeper, accountKeeper, bankKeeper, stakingKeeper, distKeeper, codec, ctx := setupGovKeeper(t)
+			params := v1.DefaultParams()
+			// Ensure params value are different than false
+			params.BurnVoteQuorum = true
+			params.BurnVoteVeto = true
+			err := govKeeper.Params.Set(ctx, params)
+			require.NoError(t, err)
 			var (
 				numVals       = 10
 				numDelegators = 5
@@ -211,9 +290,9 @@ func TestTally(t *testing.T) {
 			pass, burn, tally, err := govKeeper.Tally(ctx, proposal)
 
 			require.NoError(t, err)
-			require.Equal(t, tt.expectedPass, pass, "wrong pass")
-			require.Equal(t, tt.expectedBurn, burn, "wrong burn")
-			require.Equal(t, tt.expectedTally, tally)
+			assert.Equal(t, tt.expectedPass, pass, "wrong pass")
+			assert.Equal(t, tt.expectedBurn, burn, "wrong burn")
+			assert.Equal(t, tt.expectedTally, tally)
 		})
 	}
 }
