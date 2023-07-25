@@ -116,6 +116,7 @@ func TestInitGenesis(t *testing.T) {
 			},
 		}
 		assertProposals = func(t *testing.T, ctx sdk.Context, s suite, expectedProposals []*v1.Proposal) {
+			t.Helper()
 			assert := assert.New(t)
 			require := require.New(t)
 			params, err := s.GovKeeper.Params.Get(ctx)
@@ -172,6 +173,7 @@ func TestInitGenesis(t *testing.T) {
 				Params: params,
 			},
 			assert: func(t *testing.T, ctx sdk.Context, s suite) {
+				t.Helper()
 				p, err := s.GovKeeper.Params.Get(ctx)
 				require.NoError(t, err)
 				assert.Equal(t, *params, p)
@@ -184,6 +186,7 @@ func TestInitGenesis(t *testing.T) {
 				Constitution: "my constitution",
 			},
 			assert: func(t *testing.T, ctx sdk.Context, s suite) {
+				t.Helper()
 				p, err := s.GovKeeper.Params.Get(ctx)
 				require.NoError(t, err)
 				assert.Equal(t, *params, p)
@@ -209,6 +212,7 @@ func TestInitGenesis(t *testing.T) {
 				Deposits: deposits,
 			},
 			assert: func(t *testing.T, ctx sdk.Context, s suite) {
+				t.Helper()
 				p, err := s.GovKeeper.Params.Get(ctx)
 				require.NoError(t, err)
 				assert.Equal(t, *params, p)
@@ -224,6 +228,7 @@ func TestInitGenesis(t *testing.T) {
 				Votes:  votes,
 			},
 			assert: func(t *testing.T, ctx sdk.Context, s suite) {
+				t.Helper()
 				p, err := s.GovKeeper.Params.Get(ctx)
 				require.NoError(t, err)
 				assert.Equal(t, *params, p)
@@ -246,6 +251,7 @@ func TestInitGenesis(t *testing.T) {
 				Proposals: proposals,
 			},
 			assert: func(t *testing.T, ctx sdk.Context, s suite) {
+				t.Helper()
 				p, err := s.GovKeeper.Params.Get(ctx)
 				require.NoError(t, err)
 				assert.Equal(t, *params, p)
@@ -259,6 +265,7 @@ func TestInitGenesis(t *testing.T) {
 				Proposals: proposals,
 			},
 			assert: func(t *testing.T, ctx sdk.Context, s suite) {
+				t.Helper()
 				p, err := s.GovKeeper.Params.Get(ctx)
 				require.NoError(t, err)
 				assert.Equal(t, *paramsWithQuorumCheckEnabled, p)

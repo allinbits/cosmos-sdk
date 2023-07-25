@@ -623,10 +623,11 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 	params.QuorumCheckCount = 10 // enable quorum check
 	quorumTimeout := *params.VotingPeriod - time.Hour*8
 	params.QuorumTimeout = &quorumTimeout
+	oneHour := time.Hour
 	testcases := []struct {
 		name string
 		// the value of the MaxVotingPeriodExtension param
-		maxVotingPeriodExtension time.Duration
+		maxVotingPeriodExtension *time.Duration
 		// the duration after which the proposal reaches quorum
 		reachQuorumAfter time.Duration
 		// the expected status of the proposal after the original voting period has elapsed
@@ -638,28 +639,28 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 	}{
 		{
 			name:                            "reach quorum before timeout: voting period not extended",
-			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
+			maxVotingPeriodExtension:        params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                quorumTimeout - time.Hour,
 			expectedStatusAfterVotingPeriod: v1.StatusPassed,
 			expectedVotingPeriod:            *params.VotingPeriod,
 		},
 		{
 			name:                            "reach quorum exactly at timeout: voting period not extended",
-			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
+			maxVotingPeriodExtension:        params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                quorumTimeout,
 			expectedStatusAfterVotingPeriod: v1.StatusPassed,
 			expectedVotingPeriod:            *params.VotingPeriod,
 		},
 		{
 			name:                            "quorum never reached: voting period not extended",
-			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
+			maxVotingPeriodExtension:        params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                0,
 			expectedStatusAfterVotingPeriod: v1.StatusRejected,
 			expectedVotingPeriod:            *params.VotingPeriod,
 		},
 		{
 			name:                            "reach quorum after timeout, voting period extended",
-			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
+			maxVotingPeriodExtension:        params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                quorumTimeout + time.Hour,
 			expectedStatusAfterVotingPeriod: v1.StatusVotingPeriod,
 			expectedVotingPeriod: *params.VotingPeriod + *params.MaxVotingPeriodExtension -
@@ -667,14 +668,14 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 		},
 		{
 			name:                            "reach quorum exactly at voting period, voting period extended",
-			maxVotingPeriodExtension:        *params.MaxVotingPeriodExtension,
+			maxVotingPeriodExtension:        params.MaxVotingPeriodExtension,
 			reachQuorumAfter:                *params.VotingPeriod,
 			expectedStatusAfterVotingPeriod: v1.StatusVotingPeriod,
 			expectedVotingPeriod:            *params.VotingPeriod + *params.MaxVotingPeriodExtension,
 		},
 		{
 			name:                            "reach quorum after timeout but voting period extension too short, voting period not extended",
-			maxVotingPeriodExtension:        time.Hour,
+			maxVotingPeriodExtension:        &oneHour,
 			reachQuorumAfter:                quorumTimeout + time.Hour,
 			expectedStatusAfterVotingPeriod: v1.StatusPassed,
 			expectedVotingPeriod:            *params.VotingPeriod,
@@ -685,19 +686,21 @@ func TestEndBlockerQuorumCheck(t *testing.T) {
 			suite := createTestSuite(t)
 			app := suite.App
 			ctx := app.BaseApp.NewContext(false)
-			params.MaxVotingPeriodExtension = &tc.maxVotingPeriodExtension
+			params.MaxVotingPeriodExtension = tc.maxVotingPeriodExtension
 			err := suite.GovKeeper.Params.Set(ctx, params)
 			require.NoError(t, err)
 			addrs := simtestutil.AddTestAddrs(suite.BankKeeper, suite.StakingKeeper, ctx, 10, valTokens)
-			app.FinalizeBlock(&abci.RequestFinalizeBlock{
+			_, err = app.FinalizeBlock(&abci.RequestFinalizeBlock{
 				Height: app.LastBlockHeight() + 1,
 				Hash:   app.LastCommitID().Hash,
 			})
+			require.NoError(t, err)
 			// Create a validator
 			valAddr := sdk.ValAddress(addrs[0])
 			stakingMsgSvr := stakingkeeper.NewMsgServerImpl(suite.StakingKeeper)
 			createValidators(t, stakingMsgSvr, ctx, []sdk.ValAddress{valAddr}, []int64{10})
-			suite.StakingKeeper.EndBlocker(ctx)
+			_, err = suite.StakingKeeper.EndBlocker(ctx)
+			require.NoError(t, err)
 			// Create a proposal
 			govMsgSvr := keeper.NewMsgServerImpl(suite.GovKeeper)
 			newProposalMsg, err := v1.NewMsgSubmitProposal(
