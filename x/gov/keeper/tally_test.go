@@ -13,24 +13,20 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	"github.com/cosmos/cosmos-sdk/x/gov/keeper"
-	govtestutil "github.com/cosmos/cosmos-sdk/x/gov/testutil"
 	v1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 func TestTally(t *testing.T) {
 	type suite struct {
-		t             *testing.T
-		proposal      v1.Proposal
-		valAddrs      []sdk.ValAddress
-		delAddrs      []sdk.AccAddress
-		keeper        *keeper.Keeper
-		ctx           sdk.Context
-		accountKeeper *govtestutil.MockAccountKeeper
-		bankKeeper    *govtestutil.MockBankKeeper
-		stakingKeeper *govtestutil.MockStakingKeeper
-		distKeeper    *govtestutil.MockDistributionKeeper
-		codec         moduletestutil.TestEncodingConfig
+		t        *testing.T
+		proposal v1.Proposal
+		valAddrs []sdk.ValAddress
+		delAddrs []sdk.AccAddress
+		keeper   *keeper.Keeper
+		ctx      sdk.Context
+		mocks    mocks
+		codec    moduletestutil.TestEncodingConfig
 	}
 
 	var (
@@ -38,7 +34,7 @@ func TestTally(t *testing.T) {
 		delegatorVote = func(s suite, voter sdk.AccAddress, delegations []stakingtypes.Delegation, vote v1.VoteOption) {
 			err := s.keeper.AddVote(s.ctx, s.proposal.Id, voter, v1.NewNonSplitVoteOption(vote), "")
 			require.NoError(s.t, err)
-			s.stakingKeeper.EXPECT().
+			s.mocks.stakingKeeper.EXPECT().
 				IterateDelegations(s.ctx, voter, gomock.Any()).
 				DoAndReturn(
 					func(ctx context.Context, voter sdk.AccAddress, fn func(index int64, d stakingtypes.DelegationI) bool) error {
@@ -235,7 +231,7 @@ func TestTally(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			govKeeper, accountKeeper, bankKeeper, stakingKeeper, distKeeper, codec, ctx := setupGovKeeper(t)
+			govKeeper, mocks, codec, ctx := setupGovKeeper(t, accountKeeperExpectations)
 			params := v1.DefaultParams()
 			// Ensure params value are different than false
 			params.BurnVoteQuorum = true
@@ -245,15 +241,12 @@ func TestTally(t *testing.T) {
 			var (
 				numVals       = 10
 				numDelegators = 5
-				addrs         = simtestutil.AddTestAddrsIncremental(
-					bankKeeper, stakingKeeper, ctx, numVals+numDelegators,
-					sdkmath.NewInt(10000000*v1.DefaultMinExpeditedDepositTokensRatio),
-				)
-				valAddrs = simtestutil.ConvertAddrsToValAddrs(addrs[:numVals])
-				delAddrs = addrs[numVals:]
+				addrs         = simtestutil.CreateRandomAccounts(numVals + numDelegators)
+				valAddrs      = simtestutil.ConvertAddrsToValAddrs(addrs[:numVals])
+				delAddrs      = addrs[numVals:]
 			)
 			// Mocks a bunch of validators
-			stakingKeeper.EXPECT().
+			mocks.stakingKeeper.EXPECT().
 				IterateBondedValidatorsByPower(ctx, gomock.Any()).
 				DoAndReturn(
 					func(ctx context.Context, fn func(index int64, validator stakingtypes.ValidatorI) bool) error {
@@ -267,23 +260,23 @@ func TestTally(t *testing.T) {
 						}
 						return nil
 					})
+				// Setup bonded token
+			mocks.stakingKeeper.EXPECT().BondDenom(ctx).Return("stake", nil).AnyTimes()
+			mocks.stakingKeeper.EXPECT().TotalBondedTokens(gomock.Any()).Return(sdkmath.NewInt(10000000), nil).AnyTimes()
 			// Submit and activate a proposal
 			proposal, err := govKeeper.SubmitProposal(ctx, TestProposal, "", "title", "summary", delAddrs[0], tt.expedited)
 			require.NoError(t, err)
 			err = govKeeper.ActivateVotingPeriod(ctx, proposal)
 			require.NoError(t, err)
 			suite := suite{
-				t:             t,
-				proposal:      proposal,
-				valAddrs:      valAddrs,
-				delAddrs:      delAddrs,
-				ctx:           ctx,
-				keeper:        govKeeper,
-				accountKeeper: accountKeeper,
-				bankKeeper:    bankKeeper,
-				stakingKeeper: stakingKeeper,
-				distKeeper:    distKeeper,
-				codec:         codec,
+				t:        t,
+				proposal: proposal,
+				valAddrs: valAddrs,
+				delAddrs: delAddrs,
+				ctx:      ctx,
+				keeper:   govKeeper,
+				mocks:    mocks,
+				codec:    codec,
 			}
 			tt.setup(suite)
 
