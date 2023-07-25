@@ -99,18 +99,18 @@ func GenVeto(r *rand.Rand) sdkmath.LegacyDec {
 
 // GenQuorumTimeout returns a randomized QuorumTimeout between 0 and votingPeriod
 func GenQuorumTimeout(r *rand.Rand, votingPeriod time.Duration) time.Duration {
-	return time.Duration(r.Int63n(int64(votingPeriod)))
+	return time.Duration(simulation.RandIntBetween(r, 1, int(votingPeriod.Seconds()))) * time.Second
 }
 
 // GenMaxVotingPeriodExtension returns a randomized MaxVotingPeriodExtension
 // greater than votingPeriod-quorumTimout.
 func GenMaxVotingPeriodExtension(r *rand.Rand, votingPeriod, quorumTimout time.Duration) time.Duration {
-	return time.Duration(r.Int63n(2*60*60*24*2))*time.Second + (votingPeriod - quorumTimout)
+	return time.Duration(simulation.RandIntBetween(r, 1, int(votingPeriod.Seconds())))*time.Second + (votingPeriod - quorumTimout)
 }
 
-// GenQuorumCheckCount returns a randomized QuorumCheckCount
+// GenQuorumCheckCount returns a randomized QuorumCheckCount between 0 and 30
 func GenQuorumCheckCount(r *rand.Rand) uint64 {
-	return uint64(r.Int63n(100))
+	return uint64(simulation.RandIntBetween(r, 0, 30))
 }
 
 // RandomizedGenState generates a random GenesisState for gov
