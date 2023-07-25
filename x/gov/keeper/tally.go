@@ -131,7 +131,7 @@ func (keeper Keeper) Tally(ctx context.Context, proposal v1.Proposal) (passes, b
 	// If there is not enough quorum of votes, the proposal fails
 	percentVoting := totalVotingPower.Quo(math.LegacyNewDecFromInt(totalBonded))
 	quorum, _ := math.LegacyNewDecFromStr(params.Quorum)
-	fmt.Println("VOTING", percentVoting, "QUTORUM", quorum)
+	fmt.Println("VOTING", percentVoting, "QUORUM", quorum)
 	if percentVoting.LT(quorum) {
 		return false, params.BurnVoteQuorum, tallyResults, nil
 	}
@@ -158,6 +158,8 @@ func (keeper Keeper) Tally(ctx context.Context, proposal v1.Proposal) (passes, b
 	}
 
 	threshold, _ := math.LegacyNewDecFromStr(thresholdStr)
+	fmt.Println("THRESHOLD", threshold,
+		results[v1.OptionYes].Quo(totalVotingPower.Sub(results[v1.OptionAbstain])))
 
 	if results[v1.OptionYes].Quo(totalVotingPower.Sub(results[v1.OptionAbstain])).GT(threshold) {
 		return true, false, tallyResults, nil

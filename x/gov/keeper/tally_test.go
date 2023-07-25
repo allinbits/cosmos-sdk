@@ -11,7 +11,6 @@ import (
 
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	moduletestutil "github.com/cosmos/cosmos-sdk/types/module/testutil"
 	"github.com/cosmos/cosmos-sdk/x/gov/keeper"
 	v1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -26,11 +25,14 @@ func TestTally(t *testing.T) {
 		keeper   *keeper.Keeper
 		ctx      sdk.Context
 		mocks    mocks
-		codec    moduletestutil.TestEncodingConfig
 	}
 
 	var (
 		// handy functions
+		setTotalBonded = func(s suite, n int64) {
+			s.mocks.stakingKeeper.EXPECT().TotalBondedTokens(gomock.Any()).
+				Return(sdkmath.NewInt(n), nil)
+		}
 		delegatorVote = func(s suite, voter sdk.AccAddress, delegations []stakingtypes.Delegation, vote v1.VoteOption) {
 			err := s.keeper.AddVote(s.ctx, s.proposal.Id, voter, v1.NewNonSplitVoteOption(vote), "")
 			require.NoError(s.t, err)
@@ -59,10 +61,12 @@ func TestTally(t *testing.T) {
 		expectedError string
 	}{
 		{
-			name:         "no votes",
-			setup:        func(s suite) {},
+			name: "no votes, no bonded tokens: prop fails",
+			setup: func(s suite) {
+				setTotalBonded(s, 0)
+			},
 			expectedPass: false,
-			expectedBurn: true,
+			expectedBurn: false,
 			expectedTally: v1.TallyResult{
 				YesCount:        "0",
 				AbstainCount:    "0",
@@ -71,12 +75,27 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one validator votes",
+			name: "no votes: prop fails/burn deposit",
 			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
+			},
+			expectedPass: false,
+			expectedBurn: true, // burn because quorum not reached
+			expectedTally: v1.TallyResult{
+				YesCount:        "0",
+				AbstainCount:    "0",
+				NoCount:         "0",
+				NoWithVetoCount: "0",
+			},
+		},
+		{
+			name: "one validator votes: prop fails/burn deposit",
+			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
 				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
 			},
 			expectedPass: false,
-			expectedBurn: true,
+			expectedBurn: true, // burn because quorum not reached
 			expectedTally: v1.TallyResult{
 				YesCount:        "0",
 				AbstainCount:    "0",
@@ -85,12 +104,13 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one account votes without delegation",
+			name: "one account votes without delegation: prop fails/burn deposit",
 			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
 				delegatorVote(s, s.delAddrs[0], nil, v1.VoteOption_VOTE_OPTION_YES)
 			},
 			expectedPass: false,
-			expectedBurn: true,
+			expectedBurn: true, // burn because quorum not reached
 			expectedTally: v1.TallyResult{
 				YesCount:        "0",
 				AbstainCount:    "0",
@@ -99,8 +119,9 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one delegator votes",
+			name: "one delegator votes: prop fails/burn deposit",
 			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
 				delegations := []stakingtypes.Delegation{{
 					DelegatorAddress: s.delAddrs[0].String(),
 					ValidatorAddress: s.valAddrs[0].String(),
@@ -109,7 +130,7 @@ func TestTally(t *testing.T) {
 				delegatorVote(s, s.delAddrs[0], delegations, v1.VoteOption_VOTE_OPTION_YES)
 			},
 			expectedPass: false,
-			expectedBurn: true,
+			expectedBurn: true, // burn because quorum not reached
 			expectedTally: v1.TallyResult{
 				YesCount:        "42",
 				AbstainCount:    "0",
@@ -118,8 +139,9 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one delegator votes yes, validator votes also yes",
+			name: "one delegator votes yes, validator votes also yes: prop fails/burn deposit",
 			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
 				delegations := []stakingtypes.Delegation{{
 					DelegatorAddress: s.delAddrs[0].String(),
 					ValidatorAddress: s.valAddrs[0].String(),
@@ -129,7 +151,7 @@ func TestTally(t *testing.T) {
 				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
 			},
 			expectedPass: false,
-			expectedBurn: true,
+			expectedBurn: true, // burn because quorum not reached
 			expectedTally: v1.TallyResult{
 				YesCount:        "1000000",
 				AbstainCount:    "0",
@@ -138,8 +160,9 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "one delegator votes yes, validator votes no",
+			name: "one delegator votes yes, validator votes no: prop fails/burn deposit",
 			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
 				delegations := []stakingtypes.Delegation{{
 					DelegatorAddress: s.delAddrs[0].String(),
 					ValidatorAddress: s.valAddrs[0].String(),
@@ -149,7 +172,7 @@ func TestTally(t *testing.T) {
 				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
 			},
 			expectedPass: false,
-			expectedBurn: true,
+			expectedBurn: true, // burn because quorum not reached
 			expectedTally: v1.TallyResult{
 				YesCount:        "42",
 				AbstainCount:    "0",
@@ -163,8 +186,9 @@ func TestTally(t *testing.T) {
 			// first validator votes yes
 			// second validator votes no
 			// third validator (no delegation) votes abstain
-			name: "delegator with mixed delegations",
+			name: "delegator with mixed delegations: prop fails/burn deposit",
 			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
 				delegations := []stakingtypes.Delegation{
 					{
 						DelegatorAddress: s.delAddrs[0].String(),
@@ -183,7 +207,7 @@ func TestTally(t *testing.T) {
 				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_ABSTAIN)
 			},
 			expectedPass: false,
-			expectedBurn: true,
+			expectedBurn: true, // burn because quorum not reached
 			expectedTally: v1.TallyResult{
 				YesCount:        "1000021",
 				AbstainCount:    "1000000",
@@ -192,8 +216,9 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "quorum reached with only abstain",
+			name: "quorum reached with only abstain: prop fails",
 			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
 				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_ABSTAIN)
 				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_ABSTAIN)
 				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_ABSTAIN)
@@ -209,8 +234,9 @@ func TestTally(t *testing.T) {
 			},
 		},
 		{
-			name: "quorum reached with >1/3 veto",
+			name: "quorum reached with veto>1/3: prop fails/burn deposit",
 			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
 				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
 				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
 				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_YES)
@@ -228,10 +254,113 @@ func TestTally(t *testing.T) {
 				NoWithVetoCount: "3000000",
 			},
 		},
+		{
+			name: "quorum reached with yes<=.5: prop fails",
+			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[3], v1.VoteOption_VOTE_OPTION_NO)
+			},
+			expectedPass: false,
+			expectedBurn: false,
+			expectedTally: v1.TallyResult{
+				YesCount:        "2000000",
+				AbstainCount:    "0",
+				NoCount:         "2000000",
+				NoWithVetoCount: "0",
+			},
+		},
+		{
+			name: "quorum reached with yes>.5: prop succeeds",
+			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[3], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[4], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[5], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[6], v1.VoteOption_VOTE_OPTION_NO_WITH_VETO)
+			},
+			expectedPass: true,
+			expectedBurn: false,
+			expectedTally: v1.TallyResult{
+				YesCount:        "4000000",
+				AbstainCount:    "0",
+				NoCount:         "2000000",
+				NoWithVetoCount: "1000000",
+			},
+		},
+		{
+			name: "quorum reached thanks to abstain, yes>.5: prop succeeds",
+			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[3], v1.VoteOption_VOTE_OPTION_ABSTAIN)
+				validatorVote(s, s.valAddrs[4], v1.VoteOption_VOTE_OPTION_ABSTAIN)
+				validatorVote(s, s.valAddrs[5], v1.VoteOption_VOTE_OPTION_ABSTAIN)
+			},
+			expectedPass: true,
+			expectedBurn: false,
+			expectedTally: v1.TallyResult{
+				YesCount:        "2000000",
+				AbstainCount:    "3000000",
+				NoCount:         "1000000",
+				NoWithVetoCount: "0",
+			},
+		},
+		{
+			name:      "quorum reached with yes<=.667: expedited prop fails",
+			expedited: true,
+			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[3], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[4], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[5], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[6], v1.VoteOption_VOTE_OPTION_NO_WITH_VETO)
+			},
+			expectedPass: false,
+			expectedBurn: false,
+			expectedTally: v1.TallyResult{
+				YesCount:        "4000000",
+				AbstainCount:    "0",
+				NoCount:         "2000000",
+				NoWithVetoCount: "1000000",
+			},
+		},
+		{
+			name:      "quorum reached with yes>.667: expedited prop succeeds",
+			expedited: true,
+			setup: func(s suite) {
+				setTotalBonded(s, 10000000)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[3], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[4], v1.VoteOption_VOTE_OPTION_YES)
+				validatorVote(s, s.valAddrs[5], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[6], v1.VoteOption_VOTE_OPTION_NO_WITH_VETO)
+			},
+			expectedPass: true,
+			expectedBurn: false,
+			expectedTally: v1.TallyResult{
+				YesCount:        "5000000",
+				AbstainCount:    "0",
+				NoCount:         "1000000",
+				NoWithVetoCount: "1000000",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			govKeeper, mocks, codec, ctx := setupGovKeeper(t, accountKeeperExpectations)
+			govKeeper, mocks, _, ctx := setupGovKeeper(t, accountKeeperExpectations)
 			params := v1.DefaultParams()
 			// Ensure params value are different than false
 			params.BurnVoteQuorum = true
@@ -260,9 +389,6 @@ func TestTally(t *testing.T) {
 						}
 						return nil
 					})
-				// Setup bonded token
-			mocks.stakingKeeper.EXPECT().BondDenom(ctx).Return("stake", nil).AnyTimes()
-			mocks.stakingKeeper.EXPECT().TotalBondedTokens(gomock.Any()).Return(sdkmath.NewInt(10000000), nil).AnyTimes()
 			// Submit and activate a proposal
 			proposal, err := govKeeper.SubmitProposal(ctx, TestProposal, "", "title", "summary", delAddrs[0], tt.expedited)
 			require.NoError(t, err)
@@ -276,7 +402,6 @@ func TestTally(t *testing.T) {
 				ctx:      ctx,
 				keeper:   govKeeper,
 				mocks:    mocks,
-				codec:    codec,
 			}
 			tt.setup(suite)
 
