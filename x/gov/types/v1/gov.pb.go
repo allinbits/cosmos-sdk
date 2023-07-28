@@ -575,8 +575,6 @@ func (m *Vote) GetMetadata() string {
 }
 
 // QuorumCheckQueueEntry defines a quorum check queue entry.
-//
-// Since: cosmos-sdk 0.50
 type QuorumCheckQueueEntry struct {
 	// quorum_timeout_time is the time after which quorum checks start happening
 	// and voting period is extended if proposal reaches quorum.
@@ -865,18 +863,12 @@ type Params struct {
 	BurnVoteVeto bool `protobuf:"varint,15,opt,name=burn_vote_veto,json=burnVoteVeto,proto3" json:"burn_vote_veto,omitempty"`
 	// Duration of time after a proposal enters the voting period, during which quorum
 	// must be achieved to not incur in a voting period extension.
-	//
-	// Since: cosmos-sdk 0.50
 	QuorumTimeout *time.Duration `protobuf:"bytes,16,opt,name=quorum_timeout,json=quorumTimeout,proto3,stdduration" json:"quorum_timeout,omitempty"`
 	// Duration that expresses the maximum amount of time by which a proposal voting period
 	// can be extended.
-	//
-	// Since: cosmos-sdk 0.50
 	MaxVotingPeriodExtension *time.Duration `protobuf:"bytes,17,opt,name=max_voting_period_extension,json=maxVotingPeriodExtension,proto3,stdduration" json:"max_voting_period_extension,omitempty"`
 	// Number of times a proposal should be checked for quorum after the quorum timeout
 	// has elapsed. Used to compute the amount of time in between quorum checks.
-	//
-	// Since: cosmos-sdk 0.50
 	QuorumCheckCount uint64 `protobuf:"varint,18,opt,name=quorum_check_count,json=quorumCheckCount,proto3" json:"quorum_check_count,omitempty"`
 }
 
