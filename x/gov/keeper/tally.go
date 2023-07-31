@@ -160,6 +160,37 @@ func (keeper Keeper) HasReachedQuorum(ctx context.Context, proposal v1.Proposal)
 		return false, err
 	}
 
+	params, err := keeper.Params.Get(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// If there is no staked coins, the proposal has not reached quorum
+	totalBonded, err := keeper.sk.TotalBondedTokens(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if totalBonded.IsZero() {
+		return false, nil
+	}
+
+	// we check first if voting power of validators alone is enough to pass quorum
+	// and if so, we return true skipping the iteration over all votes
+	approxTotalVotingPower := math.LegacyZeroDec()
+	for _, val := range currValidators {
+		if len(val.Vote) == 0 {
+			continue
+		}
+		approxTotalVotingPower = approxTotalVotingPower.Add(math.LegacyNewDecFromInt(val.BondedTokens))
+	}
+	// check and return whether or not the proposal has reached quorum
+	approxPercentVoting := approxTotalVotingPower.Quo(math.LegacyNewDecFromInt(totalBonded))
+	quorum, _ := math.LegacyNewDecFromStr(params.Quorum)
+	if approxPercentVoting.GTE(quorum) {
+		return true, nil
+	}
+
 	rng := collections.NewPrefixedPairRange[uint64, sdk.AccAddress](proposal.Id)
 	err = keeper.Votes.Walk(ctx, rng, func(key collections.Pair[uint64, sdk.AccAddress], vote v1.Vote) (bool, error) {
 		voter, err := keeper.authKeeper.AddressCodec().StringToBytes(vote.Voter)
@@ -216,24 +247,8 @@ func (keeper Keeper) HasReachedQuorum(ctx context.Context, proposal v1.Proposal)
 		totalVotingPower = totalVotingPower.Add(votingPower)
 	}
 
-	params, err := keeper.Params.Get(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	// If there is no staked coins, the proposal has not reached quorum
-	totalBonded, err := keeper.sk.TotalBondedTokens(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if totalBonded.IsZero() {
-		return false, nil
-	}
-
 	// check and return whether or not the proposal has reached quorum
 	percentVoting := totalVotingPower.Quo(math.LegacyNewDecFromInt(totalBonded))
-	quorum, _ := math.LegacyNewDecFromStr(params.Quorum)
 	return percentVoting.GTE(quorum), nil
 }
 
