@@ -177,14 +177,15 @@ func (keeper Keeper) HasReachedQuorum(ctx context.Context, proposal v1.Proposal)
 
 	// we check first if voting power of validators alone is enough to pass quorum
 	// and if so, we return true skipping the iteration over all votes
+	// can speed up computation in case quorum is already reached by validator votes alone
 	approxTotalVotingPower := math.LegacyZeroDec()
 	for _, val := range currValidators {
-		_, err = keeper.Votes.Get(ctx, collections.Join(proposal.Id, sdk.AccAddress(val.Address)))
-		if err == collections.ErrNotFound {
-			continue
-		}
+		ok, err := keeper.Votes.Has(ctx, collections.Join(proposal.Id, sdk.AccAddress(val.Address)))
 		if err != nil {
 			return false, err
+		}
+		if !ok {
+			continue
 		}
 		approxTotalVotingPower = approxTotalVotingPower.Add(math.LegacyNewDecFromInt(val.BondedTokens))
 	}
