@@ -432,10 +432,15 @@ func TestHasReachedQuorum(t *testing.T) {
 			name: "enough votes: quorum",
 			setup: func(s tallySuite) {
 				setTotalBonded(s, 10000000)
-				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
-				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
-				validatorVote(s, s.valAddrs[2], v1.VoteOption_VOTE_OPTION_ABSTAIN)
-				validatorVote(s, s.valAddrs[3], v1.VoteOption_VOTE_OPTION_NO_WITH_VETO)
+				// NOTE: don't use validatorVote helper here, because when validator
+				// votes reach quorum, we don't iterate over delegations, so we don't
+				// want the EXPECT registered in validatorVote helper.
+				for i := 0; i < 4; i++ {
+					voter := sdk.AccAddress(s.valAddrs[i])
+					vote := v1.VoteOption_VOTE_OPTION_ABSTAIN
+					err := s.keeper.AddVote(s.ctx, s.proposal.Id, voter, v1.NewNonSplitVoteOption(vote), "")
+					require.NoError(s.t, err)
+				}
 			},
 			expectedQuorum: true,
 		},
