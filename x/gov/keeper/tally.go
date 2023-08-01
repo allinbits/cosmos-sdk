@@ -179,8 +179,12 @@ func (keeper Keeper) HasReachedQuorum(ctx context.Context, proposal v1.Proposal)
 	// and if so, we return true skipping the iteration over all votes
 	approxTotalVotingPower := math.LegacyZeroDec()
 	for _, val := range currValidators {
-		if len(val.Vote) == 0 {
+		_, err = keeper.Votes.Get(ctx, collections.Join(proposal.Id, sdk.AccAddress(val.Address)))
+		if err == collections.ErrNotFound {
 			continue
+		}
+		if err != nil {
+			return false, err
 		}
 		approxTotalVotingPower = approxTotalVotingPower.Add(math.LegacyNewDecFromInt(val.BondedTokens))
 	}
