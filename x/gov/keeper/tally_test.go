@@ -429,7 +429,7 @@ func TestHasReachedQuorum(t *testing.T) {
 			expectedQuorum: false,
 		},
 		{
-			name: "enough votes: quorum",
+			name: "enough votes: quorum (with only validators)",
 			setup: func(s tallySuite) {
 				setTotalBonded(s, 10000000)
 				// NOTE: don't use validatorVote helper here, because when validator
@@ -441,6 +441,39 @@ func TestHasReachedQuorum(t *testing.T) {
 					err := s.keeper.AddVote(s.ctx, s.proposal.Id, voter, v1.NewNonSplitVoteOption(vote), "")
 					require.NoError(s.t, err)
 				}
+			},
+			expectedQuorum: true,
+		},
+		{
+			name: "enough votes: quorum",
+			setup: func(s tallySuite) {
+				setTotalBonded(s, 10000000)
+				validatorVote(s, s.valAddrs[0], v1.VoteOption_VOTE_OPTION_NO)
+				validatorVote(s, s.valAddrs[1], v1.VoteOption_VOTE_OPTION_YES)
+				delegations := []stakingtypes.Delegation{
+					{
+						DelegatorAddress: s.delAddrs[0].String(),
+						ValidatorAddress: s.valAddrs[2].String(),
+						Shares:           sdkmath.LegacyNewDec(500000),
+					},
+					{
+						DelegatorAddress: s.delAddrs[0].String(),
+						ValidatorAddress: s.valAddrs[3].String(),
+						Shares:           sdkmath.LegacyNewDec(500000),
+					},
+					{
+						DelegatorAddress: s.delAddrs[0].String(),
+						ValidatorAddress: s.valAddrs[4].String(),
+						Shares:           sdkmath.LegacyNewDec(500000),
+					},
+					{
+						DelegatorAddress: s.delAddrs[0].String(),
+						ValidatorAddress: s.valAddrs[5].String(),
+						Shares:           sdkmath.LegacyNewDec(500000),
+					},
+				}
+				delegatorVote(s, s.delAddrs[0], delegations, v1.VoteOption_VOTE_OPTION_ABSTAIN)
+
 			},
 			expectedQuorum: true,
 		},
