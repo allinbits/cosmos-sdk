@@ -517,3 +517,88 @@ func TestTallyValidatorMultipleDelegations(t *testing.T) {
 
 	assert.Assert(t, tallyResults.Equals(expectedTallyResult))
 }
+
+func TestHasReachQuorum(t *testing.T) {
+	type suite struct {
+		*fixture
+		proposal v1.Proposal
+		valAddrs []sdk.AccAddress
+		accAddrs []sdk.AccAddress
+	}
+	tests := []struct {
+		name           string
+		setup          func(suite)
+		expectedQuorum bool
+	}{
+		{
+			name:           "no vote",
+			setup:          func(suite) {},
+			expectedQuorum: false,
+		},
+		{
+			name: "quorum not reached",
+			setup: func(s suite) {
+				assert.NilError(t, s.govKeeper.AddVote(s.ctx, s.proposal.Id, s.valAddrs[0], v1.NewNonSplitVoteOption(v1.OptionYes), ""))
+
+				assert.NilError(t, s.govKeeper.AddVote(s.ctx, s.proposal.Id, s.accAddrs[0], v1.NewNonSplitVoteOption(v1.OptionYes), ""))
+			},
+			expectedQuorum: false,
+		},
+		{
+			name: "quorum reached with only validator vote",
+			setup: func(s suite) {
+				assert.NilError(t, s.govKeeper.AddVote(s.ctx, s.proposal.Id, s.valAddrs[0], v1.NewNonSplitVoteOption(v1.OptionYes), ""))
+				assert.NilError(t, s.govKeeper.AddVote(s.ctx, s.proposal.Id, s.valAddrs[1], v1.NewNonSplitVoteOption(v1.OptionNo), ""))
+			},
+			expectedQuorum: true,
+		},
+		{
+			name: "quorum reached with validator & delegator vote",
+			setup: func(s suite) {
+				assert.NilError(t, s.govKeeper.AddVote(s.ctx, s.proposal.Id, s.valAddrs[0], v1.NewNonSplitVoteOption(v1.OptionYes), ""))
+				assert.NilError(t, s.govKeeper.AddVote(s.ctx, s.proposal.Id, s.accAddrs[0], v1.NewNonSplitVoteOption(v1.OptionNo), ""))
+				assert.NilError(t, s.govKeeper.AddVote(s.ctx, s.proposal.Id, s.accAddrs[1], v1.NewNonSplitVoteOption(v1.OptionAbstain), ""))
+			},
+			expectedQuorum: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// t.Parallel()
+			f := initFixture(t)
+			ctx := f.ctx
+			// Create 3 validators
+			valAccAddrs, valAddrs := createValidators(t, f, []int64{5, 5, 5})
+			// Create 3 delegators
+			delegation := math.NewInt(10000000)
+			accAddrs := simtestutil.AddTestAddrsIncremental(f.bankKeeper, f.stakingKeeper, f.ctx, 3, delegation)
+			for i, accAddr := range accAddrs {
+				val, err := f.stakingKeeper.GetValidator(ctx, valAddrs[i])
+				assert.NilError(t, err)
+				_, err = f.stakingKeeper.Delegate(ctx, accAddr, delegation, stakingtypes.Unbonded, val, true)
+				assert.NilError(t, err)
+			}
+			// Create and activate proposal
+			proposal, err := f.govKeeper.SubmitProposal(ctx, TestProposal, "", "test",
+				"description", sdk.AccAddress("cosmos1ghekyjucln7y67ntx7cf27m9dpuxxemn4c8g4r"), false)
+			assert.NilError(t, err)
+			proposal.Status = v1.StatusVotingPeriod
+			err = f.govKeeper.SetProposal(ctx, proposal)
+			assert.NilError(t, err)
+			tt.setup(suite{
+				fixture:  f,
+				proposal: proposal,
+				valAddrs: valAccAddrs,
+				accAddrs: accAddrs,
+			})
+
+			proposal, ok := f.govKeeper.Proposals.Get(ctx, proposal.Id)
+			assert.Assert(t, ok)
+
+			quorum, err := f.govKeeper.HasReachedQuorum(ctx, proposal)
+
+			assert.NilError(t, err)
+			assert.Assert(t, quorum == tt.expectedQuorum)
+		})
+	}
+}
