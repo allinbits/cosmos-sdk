@@ -473,7 +473,6 @@ func TestHasReachedQuorum(t *testing.T) {
 					},
 				}
 				delegatorVote(s, s.delAddrs[0], delegations, v1.VoteOption_VOTE_OPTION_ABSTAIN)
-
 			},
 			expectedQuorum: true,
 		},
@@ -523,6 +522,12 @@ func TestHasReachedQuorum(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedQuorum, quorum)
+			if tt.expectedQuorum {
+				// Assert votes are still here after HasReachedQuorum
+				rng := collections.NewPrefixedPairRange[uint64, sdk.AccAddress](proposal.Id)
+				_, err = suite.keeper.Votes.Iterate(suite.ctx, rng)
+				assert.NoError(t, err, "votes must be kept after HasReachedQuorum")
+			}
 		})
 	}
 }
