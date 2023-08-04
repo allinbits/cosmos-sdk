@@ -19,12 +19,9 @@ func (keeper Keeper) Tally(ctx context.Context, proposal v1.Proposal) (passes, b
 	if err != nil {
 		return false, false, tallyResults, err
 	}
-	results := make(map[v1.VoteOption]math.LegacyDec)
-	totalVotingPower, err := keeper.tallyVotes(ctx, proposal, currValidators, results)
+
+	totalVotingPower, results, err := keeper.tallyVotes(ctx, proposal, currValidators, true)
 	if err != nil {
-		return false, false, tallyResults, err
-	}
-	if err := keeper.deleteVotes(ctx, proposal.Id); err != nil {
 		return false, false, tallyResults, err
 	}
 
@@ -125,7 +122,7 @@ func (keeper Keeper) HasReachedQuorum(ctx context.Context, proposal v1.Proposal)
 	if approxPercentVoting.GTE(quorum) {
 		return true, nil
 	}
-	totalVotingPower, err := keeper.tallyVotes(ctx, proposal, currValidators, nil)
+	totalVotingPower, _, err := keeper.tallyVotes(ctx, proposal, currValidators, false)
 	if err != nil {
 		return false, err
 	}
@@ -158,14 +155,17 @@ func (keeper Keeper) getBondedValidatorsByAddress(ctx context.Context) (map[stri
 	return vals, err
 }
 
-// tallyVotes returns the total voting power of the votes on a
-// proposal. If results is not nil, then it's filled with all the vote options
-// count.
-func (keeper Keeper) tallyVotes(ctx context.Context, proposal v1.Proposal,
-	currValidators map[string]v1.ValidatorGovInfo, results map[v1.VoteOption]math.LegacyDec,
-) (math.LegacyDec, error) {
-	totalVotingPower := math.LegacyZeroDec()
-	if results != nil {
+// tallyVotes returns the total voting power and tally results of the votes
+// on a proposal. If `isFinal` is true, results will be stored in `results`
+// map and votes will be deleted. Otherwise, only the total voting power
+// will be returned and `results` will be nil.
+func (keeper Keeper) tallyVotes(
+	ctx context.Context, proposal v1.Proposal,
+	currValidators map[string]v1.ValidatorGovInfo, isFinal bool,
+) (totalVotingPower math.LegacyDec, results map[v1.VoteOption]math.LegacyDec, err error) {
+	totalVotingPower = math.LegacyZeroDec()
+	if isFinal {
+		results = make(map[v1.VoteOption]math.LegacyDec)
 		results[v1.OptionYes] = math.LegacyZeroDec()
 		results[v1.OptionAbstain] = math.LegacyZeroDec()
 		results[v1.OptionNo] = math.LegacyZeroDec()
@@ -173,7 +173,7 @@ func (keeper Keeper) tallyVotes(ctx context.Context, proposal v1.Proposal,
 	}
 
 	rng := collections.NewPrefixedPairRange[uint64, sdk.AccAddress](proposal.Id)
-	err := keeper.Votes.Walk(ctx, rng, func(key collections.Pair[uint64, sdk.AccAddress], vote v1.Vote) (bool, error) {
+	err = keeper.Votes.Walk(ctx, rng, func(key collections.Pair[uint64, sdk.AccAddress], vote v1.Vote) (bool, error) {
 		// if validator, just record it in the map
 		voter, err := keeper.authKeeper.AddressCodec().StringToBytes(vote.Voter)
 		if err != nil {
@@ -202,7 +202,7 @@ func (keeper Keeper) tallyVotes(ctx context.Context, proposal v1.Proposal,
 				// delegation shares * bonded / total shares
 				votingPower := delegation.GetShares().MulInt(val.BondedTokens).Quo(val.DelegatorShares)
 
-				if results != nil {
+				if isFinal {
 					for _, option := range vote.Options {
 						weight, _ := math.LegacyNewDecFromStr(option.Weight)
 						subPower := votingPower.Mul(weight)
@@ -218,11 +218,14 @@ func (keeper Keeper) tallyVotes(ctx context.Context, proposal v1.Proposal,
 			return false, err
 		}
 
+		if isFinal {
+			return false, keeper.Votes.Remove(ctx, collections.Join(vote.ProposalId, sdk.AccAddress(voter)))
+		}
 		return false, nil
 	})
 
 	if err != nil && !errors.Is(err, collections.ErrInvalidIterator) {
-		return totalVotingPower, err
+		return totalVotingPower, nil, err
 	}
 
 	// iterate over the validators again to tally their voting power
@@ -234,7 +237,7 @@ func (keeper Keeper) tallyVotes(ctx context.Context, proposal v1.Proposal,
 		sharesAfterDeductions := val.DelegatorShares.Sub(val.DelegatorDeductions)
 		votingPower := sharesAfterDeductions.MulInt(val.BondedTokens).Quo(val.DelegatorShares)
 
-		if results != nil {
+		if isFinal {
 			for _, option := range val.Vote {
 				weight, _ := math.LegacyNewDecFromStr(option.Weight)
 				subPower := votingPower.Mul(weight)
@@ -244,5 +247,5 @@ func (keeper Keeper) tallyVotes(ctx context.Context, proposal v1.Proposal,
 		totalVotingPower = totalVotingPower.Add(votingPower)
 	}
 
-	return totalVotingPower, nil
+	return totalVotingPower, results, nil
 }
