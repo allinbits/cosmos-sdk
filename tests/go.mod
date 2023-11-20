@@ -24,7 +24,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.51.0
 	github.com/cosmos/gogoproto v1.4.10
 	github.com/golang/mock v1.6.0
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
