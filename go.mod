@@ -17,10 +17,10 @@ require (
 	github.com/bits-and-blooms/bitset v1.8.0
 	github.com/chzyer/readline v1.5.1
 	github.com/cockroachdb/apd/v2 v2.0.2
-	github.com/cockroachdb/errors v1.10.0
+	github.com/cockroachdb/errors v1.11.1
 	github.com/cometbft/cometbft v0.38.0-rc3
 	github.com/cosmos/btcutil v1.0.5
-	github.com/cosmos/cosmos-db v1.0.0
+	github.com/cosmos/cosmos-db v1.0.2
 	github.com/cosmos/cosmos-proto v1.0.0-beta.3
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/cosmos/gogogateway v1.2.0
@@ -48,7 +48,7 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/common v0.44.0
 	github.com/rs/zerolog v1.30.0
-	github.com/spf13/cast v1.5.1
+	github.com/spf13/cast v1.6.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
@@ -76,9 +76,9 @@ require (
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
-	github.com/cockroachdb/pebble v0.0.0-20230710174534-a9a079d4fb6b // indirect
+	github.com/cockroachdb/pebble v1.1.0 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
-	github.com/cockroachdb/tokenbucket v0.0.0-20230613231145-182959a1fad6 // indirect
+	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/cometbft/cometbft-db v0.7.0 // indirect
 	github.com/cosmos/iavl v1.0.0-beta.2 // indirect
 	github.com/cosmos/ics23/go v0.10.0 // indirect
@@ -120,7 +120,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
-	github.com/linxGnu/grocksdb v1.8.0 // indirect
+	github.com/linxGnu/grocksdb v1.8.12 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
@@ -149,7 +149,7 @@ require (
 	github.com/zondax/ledger-go v0.14.1 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
 	golang.org/x/net v0.12.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/term v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20230706204954-ccb25ca9f130 // indirect
