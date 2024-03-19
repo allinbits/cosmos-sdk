@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/cosmos/cosmos-sdk v0.46.0-beta2.0.20230614103911-b3da8bb4e801
-	github.com/creachadair/atomicfile v0.3.1
-	github.com/creachadair/tomledit v0.0.24
+	github.com/creachadair/atomicfile v0.3.3
+	github.com/creachadair/tomledit v0.0.26
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	golang.org/x/exp v0.0.0-20230711153332-06a737ee72cb
@@ -74,7 +74,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/orderedcode v0.0.1 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
