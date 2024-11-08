@@ -8,26 +8,27 @@ require (
 	cosmossdk.io/math v1.0.1
 	github.com/cometbft/cometbft v0.38.0-rc3
 	github.com/cosmos/cosmos-db v1.0.0
-	github.com/cosmos/gogoproto v1.4.10
-	github.com/cosmos/iavl v1.0.0-beta.2
+	github.com/cosmos/gogoproto v1.5.0
+	github.com/cosmos/iavl v1.3.1
 	github.com/cosmos/ics23/go v0.10.0
 	github.com/golang/mock v1.6.0
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-plugin v1.4.10
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/spf13/cast v1.5.1 // indirect
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tidwall/btree v1.6.0
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
-	google.golang.org/grpc v1.57.0
-	google.golang.org/protobuf v1.31.0
+	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
+	google.golang.org/grpc v1.64.1
+	google.golang.org/protobuf v1.34.2
 	gotest.tools/v3 v3.5.0
 )
 
 require github.com/hashicorp/go-metrics v0.5.1
 
 require (
+	cosmossdk.io/core v0.12.1-0.20240725072823-6a2d039e1212 // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
@@ -38,13 +39,13 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/emicklei/dot v1.4.2 // indirect
+	github.com/emicklei/dot v1.6.2 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/getsentry/sentry-go v0.21.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
@@ -70,10 +71,10 @@ require (
 	github.com/rs/zerolog v1.30.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
-	golang.org/x/crypto v0.11.0 // indirect
-	golang.org/x/net v0.12.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230726155614-23370e0ffb3e // indirect
+	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240709173604-40e1e62336c5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
