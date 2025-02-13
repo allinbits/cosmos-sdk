@@ -11,7 +11,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
-	gotest.tools/v3 v3.5.0
+	gotest.tools/v3 v3.5.2
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -47,7 +47,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/net v0.12.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20230706204954-ccb25ca9f130 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230629202037-9506855d4529 // indirect
