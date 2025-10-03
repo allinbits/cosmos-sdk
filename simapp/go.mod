@@ -1,6 +1,6 @@
 module cosmossdk.io/simapp
 
-go 1.20
+go 1.23
 
 require (
 	cosmossdk.io/api v0.7.0
@@ -29,7 +29,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.36.10
 )
 
 require (
@@ -94,7 +94,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/orderedcode v0.0.1 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
