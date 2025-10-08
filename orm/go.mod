@@ -1,6 +1,6 @@
 module cosmossdk.io/orm
 
-go 1.20
+go 1.23
 
 require (
 	cosmossdk.io/api v0.7.0
@@ -10,13 +10,13 @@ require (
 	github.com/cosmos/cosmos-db v1.0.0
 	github.com/cosmos/cosmos-proto v1.0.0-beta.3
 	github.com/golang/mock v1.6.0
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.7.0
 	github.com/iancoleman/strcase v0.3.0
 	github.com/regen-network/gocuke v0.6.3
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	google.golang.org/grpc v1.57.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.36.10
 	gotest.tools/v3 v3.5.0
 	pgregory.net/rapid v1.0.0
 )
