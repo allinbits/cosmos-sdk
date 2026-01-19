@@ -1,4 +1,4 @@
-go 1.20
+go 1.23
 
 module github.com/cosmos/cosmos-sdk
 
@@ -29,7 +29,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.3
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.7.0
 	github.com/google/gofuzz v1.2.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
@@ -59,7 +59,7 @@ require (
 	golang.org/x/sync v0.3.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230629202037-9506855d4529
 	google.golang.org/grpc v1.57.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.36.11
 	gotest.tools/v3 v3.5.0
 	pgregory.net/rapid v1.0.0
 	sigs.k8s.io/yaml v1.3.0
