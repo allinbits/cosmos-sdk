@@ -1,6 +1,6 @@
 module cosmossdk.io/collections
 
-go 1.20
+go 1.24
 
 require (
 	cosmossdk.io/core v0.9.0
@@ -27,7 +27,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
-	github.com/klauspost/compress v1.16.5 // indirect
+	github.com/klauspost/compress v1.18.7 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/linxGnu/grocksdb v1.7.16 // indirect
